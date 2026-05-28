@@ -109,13 +109,13 @@ All requests are transmitted as a **byte array** in hexadecimal format. The byte
 The byte array is interpreted using the following predefined structure:
 
 ```cpp
-struct msg_interp {
-  int req_type;         // Type of request.  
-  int cur_msg_count;    // Current message index in a sequence  
-  int tot_msg_count;    // Total number of messages in a sequence  
-  int msg_length;       // Length of the message data  
-  char msg[MAX_MSG_LEN]; // Message payload  
-  int checksum;         // Error-checking value  
+struct msgInterpeterStruct{
+  int reqType; // Type of request.
+  int curMsgCount;  // Current message index in the request 
+  int totMsgCount;  // Total number of expected messages for the request
+  int msgLength; // Length of the message data 
+  char msg[MAX_MSG_LEN];  // The message itself   
+  int checksum; // Error-checking value
 };
 ```
 

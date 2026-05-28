@@ -41,10 +41,10 @@ struct General {
 
 // Parameter struct
 struct Parameter {
-    int current_val;
+    int currentVal;
     int min;
     int max;
-    bool modify_permission;
+    bool modifyPermission;
 };
 
 // Function struct
@@ -64,7 +64,7 @@ struct Sensor {
 // MotorPin struct
 struct MotorPin {
     String type;
-    int pin_number;
+    int pinNumber;
 };
 
 // Motor struct
@@ -72,13 +72,13 @@ struct Motor {
     String name;
     String type;
     std::vector<MotorPin> pins;
-    Parameter safety_threshold;
+    Parameter safetyThreshold;
 };
 
 // Function struct
 struct Function {
     String name;
-    String protocol_type;
+    String protocolType;
 };
 
 // Global vectors for parsed data
@@ -89,9 +89,7 @@ static std::vector<Sensor> sensors;
 static std::vector<Motor> motors;
 static std::vector<Function> functions;
 
-
-
-const char* create_default_yaml_string(){
+const char* createDefaultYamlString(){
   const char* yamlContent = R"(
 file_type: hand_system_configuration
 
@@ -263,7 +261,13 @@ functions:
   return yamlContent;
 }
 
-void splitYaml(const char* yaml, char **general_splited_field=NULL, char **sensors_splited_field=NULL, char **motors_splited_field=NULL, char **functions_splited_field=NULL) {
+void splitYaml(
+    const char* yaml,
+    char **general_splited_field = NULL,
+    char **sensors_splited_field = NULL,
+    char **motors_splited_field = NULL,
+    char **functions_splited_field = NULL)
+{
 
     Serial.println("recived yaml buffer, splitting...");
     const char *start_general = strstr(yaml, "general:");
@@ -345,10 +349,10 @@ void parseYAML(const int field_type, const char * yamlContent) {
             for (JsonPair param : params) {
                 Parameter paramData;
                 JsonArray paramArray = param.value().as<JsonArray>();
-                paramData.current_val = paramArray[0];
+                paramData.currentVal = paramArray[0];
                 paramData.min = paramArray[1];
                 paramData.max = paramArray[2];
-                paramData.modify_permission = paramArray[3];
+                paramData.modifyPermission = paramArray[3];
                 sensor.function.parameters[param.key().c_str()] = paramData;
             }
             sensors.push_back(sensor);
@@ -368,15 +372,15 @@ void parseYAML(const int field_type, const char * yamlContent) {
             for (JsonObject pin : pinsArray) {
                 MotorPin motorPin;
                 motorPin.type = pin["type"].as<String>();
-                motorPin.pin_number = pin["pin_number"].as<int>();
+                motorPin.pinNumber = pin["pin_number"].as<int>();
                 motor.pins.push_back(motorPin);
             }
 
             JsonArray threshold = entry["safety_threshold"].as<JsonArray>();
-            motor.safety_threshold.current_val = threshold[0];
-            motor.safety_threshold.min = threshold[1];
-            motor.safety_threshold.max = threshold[2];
-            motor.safety_threshold.modify_permission = threshold[3];
+            motor.safetyThreshold.currentVal = threshold[0];
+            motor.safetyThreshold.min = threshold[1];
+            motor.safetyThreshold.max = threshold[2];
+            motor.safetyThreshold.modifyPermission = threshold[3];
             motors.push_back(motor);
         }
         break;
@@ -387,7 +391,7 @@ void parseYAML(const int field_type, const char * yamlContent) {
         for (JsonObject entry : actionArray) {
             Function function;
             function.name = entry["name"].as<String>();
-            function.protocol_type = entry["protocol_type"].as<String>();
+            function.protocolType = entry["protocol_type"].as<String>();
             functions.push_back(function);
         }
         break;
@@ -449,10 +453,10 @@ void parseYAMLDemo (const String& yamlContent) {
       for (JsonPair param : params) {
           Parameter paramData;
           JsonArray paramArray = param.value().as<JsonArray>();
-          paramData.current_val = paramArray[0];
+          paramData.currentVal = paramArray[0];
           paramData.min = paramArray[1];
           paramData.max = paramArray[2];
-          paramData.modify_permission = paramArray[3];
+          paramData.modifyPermission = paramArray[3];
           sensor.function.parameters[param.key().c_str()] = paramData;
       }
       sensors.push_back(sensor);
@@ -469,15 +473,15 @@ void parseYAMLDemo (const String& yamlContent) {
       for (JsonObject pin : pinsArray) {
           MotorPin motorPin;
           motorPin.type = pin["type"].as<String>();
-          motorPin.pin_number = pin["pin_number"].as<int>();
+          motorPin.pinNumber = pin["pin_number"].as<int>();
           motor.pins.push_back(motorPin);
       }
 
       JsonArray threshold = entry["safety_threshold"].as<JsonArray>();
-      motor.safety_threshold.current_val = threshold[0];
-      motor.safety_threshold.min = threshold[1];
-      motor.safety_threshold.max = threshold[2];
-      motor.safety_threshold.modify_permission = threshold[3];
+      motor.safetyThreshold.currentVal = threshold[0];
+      motor.safetyThreshold.min = threshold[1];
+      motor.safetyThreshold.max = threshold[2];
+      motor.safetyThreshold.modifyPermission = threshold[3];
       motors.push_back(motor);
   }
 
@@ -486,7 +490,7 @@ void parseYAMLDemo (const String& yamlContent) {
   for (JsonObject entry : actionArray) {
       Function function;
       function.name = entry["name"].as<String>();
-      function.protocol_type = entry["protocol_type"].as<String>();
+      function.protocolType = entry["protocol_type"].as<String>();
       functions.push_back(function);
   }
 }
@@ -505,13 +509,13 @@ void printParameter(const Parameter& parameter, const String& parameterName = ""
         Serial.println(parameterName);
     }
     Serial.print("    Current Value: ");
-    Serial.println(parameter.current_val);
+    Serial.println(parameter.currentVal);
     Serial.print("    Min: ");
     Serial.println(parameter.min);
     Serial.print("    Max: ");
     Serial.println(parameter.max);
     Serial.print("    Modify Permission: ");
-    Serial.println(parameter.modify_permission ? "true" : "false");
+    Serial.println(parameter.modifyPermission ? "true" : "false");
 }
 
 void printSensorFunction(const SensorFunction& function) {
@@ -540,7 +544,7 @@ void printMotorPin(const MotorPin& pin) {
     Serial.print("    Pin Type: ");
     Serial.println(pin.type);
     Serial.print("    Pin Number: ");
-    Serial.println(pin.pin_number);
+    Serial.println(pin.pinNumber);
 }
 
 void printMotor(const Motor& motor) {
@@ -556,7 +560,7 @@ void printMotor(const Motor& motor) {
     }
 
     Serial.println("  Safety Threshold:");
-    printParameter(motor.safety_threshold);
+    printParameter(motor.safetyThreshold);
 }
 
 void printFunction(const Function& function) {
@@ -564,7 +568,7 @@ void printFunction(const Function& function) {
     Serial.print("  Name: ");
     Serial.println(function.name);
     Serial.print("  Protocol Type: ");
-    Serial.println(function.protocol_type);
+    Serial.println(function.protocolType);
 }
 
 void splitSensorsField(const char* yaml){
@@ -590,7 +594,8 @@ void splitSensorsField(const char* yaml){
         }
 
         // Allocate memory for the single sensor block, including the header "sensors:"
-        char* single_sensor = (char*)malloc((sensor_end - sensors_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
+        char* single_sensor = (char*)malloc(
+            (sensor_end - sensors_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
         if (single_sensor == nullptr) {
             Serial.println("Memory allocation failed.");
             return;
@@ -620,7 +625,6 @@ void splitSensorsField(const char* yaml){
     return;
 }
 
-
 void splitFunctionsField(const char* yaml ){
   Serial.println("splitting functions");
     const char* functions_start = strstr(yaml, "functions:");
@@ -644,7 +648,8 @@ void splitFunctionsField(const char* yaml ){
         }
 
         // Allocate memory for the single function block, including the header "functions:"
-        char* single_function = (char*)malloc((function_end - functions_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
+        char* single_function = (char*)malloc(
+            (function_end - functions_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
         if (single_function == nullptr) {
             Serial.println("Memory allocation failed.");
             return;
@@ -695,7 +700,8 @@ void splitGeneralField(const char* yaml) {
         }
 
         // Allocate memory for the single general block, including the header "general:"
-        char* single_general = (char*)malloc((general_end - general_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
+        char* single_general = (char*)malloc(
+            (general_end - general_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
         if (single_general == nullptr) {
             Serial.println("Memory allocation failed.");
             return;
@@ -744,7 +750,8 @@ void splitMotorsField(const char* yaml) {
         Serial.println("before malloc");
 
         // Allocate memory for the single motor block, including the header "motors:"
-        char* single_motor = (char*)malloc((motors_end - motors_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
+        char* single_motor = (char*)malloc(
+            (motors_end - motors_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
         if (single_motor == nullptr) {
             Serial.println("Memory allocation failed.");
             return;
@@ -775,15 +782,20 @@ void splitMotorsField(const char* yaml) {
     return;
 }
 
-void init_default_yaml() {
+void initDefaultYaml() {
   
   // turn on if you want only to create a string in a yaml file for debuging
-  const char* yamlContent = create_default_yaml_string();
+  const char* yamlContent = createDefaultYamlString();
   char* motors_splited_field; 
   char *general_splited_field; 
   char *sensors_splited_field; 
   char*functions_splited_field;
-  splitYaml(yamlContent, &general_splited_field, &sensors_splited_field, &motors_splited_field, &functions_splited_field);
+  splitYaml(
+      yamlContent,
+      &general_splited_field,
+      &sensors_splited_field,
+      &motors_splited_field,
+      &functions_splited_field);
   splitMotorsField((char*)motors_splited_field);
   free(motors_splited_field);
   splitSensorsField((char*)sensors_splited_field);
