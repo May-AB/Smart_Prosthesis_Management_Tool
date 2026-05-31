@@ -1,93 +1,30 @@
-#ifndef SHARED_YAMEL_PARSER_H
-#define SHARED_YAMEL_PARSER_H
-
 #include <Arduino.h>
 #include <vector>
 #include <map>
 #include <ArduinoJson.h>
 #include <YAMLDuino.h>
-#include "shared_com_vars.h"
-#include "ble_nimble_server.h"
+#include "SharedComVars.h"
+#include "Requests.h"
+#include "SharedYamlParser.h"
 
-#define FUNC_TYPE_GESTURE "gesture"
+// Definition of YAML buffers and pointers
+uint8_t* motorsYamlBuffer = nullptr;
+uint8_t* sensorsYamlBuffer = nullptr;
+uint8_t* funcsYamlBuffer = nullptr;
+uint8_t* generalYamlBuffer = nullptr;
 
-// // yaml pointers 
-static uint8_t* motors_yaml_buffer;
-static uint8_t* sensors_yaml_buffer;
-static uint8_t* funcs_yaml_buffer;
-static uint8_t* general_yaml_buffer;
+uint8_t** pointerToSensorBuff = nullptr;
+uint8_t** pointerToMotorsBuff = nullptr;
+uint8_t** pointerToFuncBuff = nullptr;
+uint8_t** pointerToGeneralBuff = nullptr;
 
-static uint8_t** pointer_to_sensor_buff;
-static uint8_t** pointer_to_motors_buff;
-static uint8_t** pointer_to_func_buff;
-static uint8_t** pointer_to_general_buff;
-
-// Communication struct
-struct Communication {
-    String name;
-    String status;
-    String ssid;
-    String password;
-    String mac;
-    String serviceUUID;
-    String characteristicUUID;
-};
-
-// General struct
-struct General {
-    String name;
-    int code;
-};
-
-// Parameter struct
-struct Parameter {
-    int currentVal;
-    int min;
-    int max;
-    bool modifyPermission;
-};
-
-// Function struct
-struct SensorFunction {
-    String name;
-    std::map<String, Parameter> parameters;  // Key: Parameter name
-};
-
-// Sensor struct
-struct Sensor {
-    String name;
-    String status;
-    String type;
-    SensorFunction function;
-};
-
-// MotorPin struct
-struct MotorPin {
-    String type;
-    int pinNumber;
-};
-
-// Motor struct
-struct Motor {
-    String name;
-    String type;
-    std::vector<MotorPin> pins;
-    Parameter safetyThreshold;
-};
-
-// Function struct
-struct Function {
-    String name;
-    String protocolType;
-};
-
-// Global vectors for parsed data
-static String fileType;
-static std::vector<General> generalEntries;
-static std::vector<Communication> communications;
-static std::vector<Sensor> sensors;
-static std::vector<Motor> motors;
-static std::vector<Function> functions;
+// Definition of Global vectors for parsed data
+String fileType;
+std::vector<General> generalEntries;
+std::vector<Communication> communications;
+std::vector<Sensor> sensors;
+std::vector<Motor> motors;
+std::vector<Function> functions;
 
 const char* createDefaultYamlString(){
   const char* yamlContent = R"(
@@ -263,56 +200,56 @@ functions:
 
 void splitYaml(
     const char* yaml,
-    char **general_splited_field = NULL,
-    char **sensors_splited_field = NULL,
-    char **motors_splited_field = NULL,
-    char **functions_splited_field = NULL)
+    char **generalSplitedField,
+    char **sensorsSplitedField,
+    char **motorsSplitedField,
+    char **functionsSplitedField)
 {
 
     Serial.println("recived yaml buffer, splitting...");
-    const char *start_general = strstr(yaml, "general:");
-    const char *start_sensors = strstr(yaml, "sensors:");
-    const char *start_motors = strstr(yaml, "motors:");
-    const char *start_functions = strstr(yaml, "functions:");
+    const char *startGeneral = strstr(yaml, "general:");
+    const char *startSensors = strstr(yaml, "sensors:");
+    const char *startMotors = strstr(yaml, "motors:");
+    const char *startFunctions = strstr(yaml, "functions:");
 
     // Find the end of each section by locating the next section or end of string
-    const char *end_general = start_sensors ? strstr(start_sensors, "sensors:") : NULL;
-    const char *end_sensors = start_motors ? strstr(start_motors, "motors:") : NULL;
-    const char *end_motors = start_functions ? strstr(start_functions, "functions:") : NULL;
-    const char *end_functions = NULL; // Functions section ends at the end of the string
+    const char *endGeneral = startSensors ? strstr(startSensors, "sensors:") : NULL;
+    const char *endSensors = startMotors ? strstr(startMotors, "motors:") : NULL;
+    const char *endMotors = startFunctions ? strstr(startFunctions, "functions:") : NULL;
+    const char *endFunctions = NULL; // Functions section ends at the end of the string
 
     // Copy each section into the respective output strings
-    if (start_general && general_splited_field) {
-        size_t len = (end_general ? end_general : yaml + strlen(yaml)) - start_general;
-        *general_splited_field = (char*) malloc((len+1)*sizeof(char));
-        strncpy(*general_splited_field, start_general, len);
-        (*general_splited_field)[len] = '\0';
+    if (startGeneral && generalSplitedField) {
+        size_t len = (endGeneral ? endGeneral : yaml + strlen(yaml)) - startGeneral;
+        *generalSplitedField = (char*) malloc((len+1)*sizeof(char));
+        strncpy(*generalSplitedField, startGeneral, len);
+        (*generalSplitedField)[len] = '\0';
     }
 
-    if (start_sensors && sensors_splited_field) {
-        size_t len = (end_sensors ? end_sensors : yaml + strlen(yaml)) - start_sensors;
-        *sensors_splited_field = (char*) malloc((len+1)*sizeof(char));
-        strncpy(*sensors_splited_field, start_sensors, len);
-        (*sensors_splited_field)[len] = '\0';
+    if (startSensors && sensorsSplitedField) {
+        size_t len = (endSensors ? endSensors : yaml + strlen(yaml)) - startSensors;
+        *sensorsSplitedField = (char*) malloc((len+1)*sizeof(char));
+        strncpy(*sensorsSplitedField, startSensors, len);
+        (*sensorsSplitedField)[len] = '\0';
     }
 
-    if (start_motors && motors_splited_field) {
-        size_t len = (end_motors ? end_motors : yaml + strlen(yaml)) - start_motors;
-        *motors_splited_field = (char*) malloc((len+1)*sizeof(char));
-        strncpy(*motors_splited_field, start_motors, len);
-        (*motors_splited_field)[len] = '\0';
+    if (startMotors && motorsSplitedField) {
+        size_t len = (endMotors ? endMotors : yaml + strlen(yaml)) - startMotors;
+        *motorsSplitedField = (char*) malloc((len+1)*sizeof(char));
+        strncpy(*motorsSplitedField, startMotors, len);
+        (*motorsSplitedField)[len] = '\0';
     }
 
-    if (start_functions && functions_splited_field) {
-        size_t len = (end_functions ? end_functions : yaml + strlen(yaml)) - start_functions;
-        *functions_splited_field = (char*) malloc((len+1)*sizeof(char));
-        strncpy(*functions_splited_field, start_functions, len);
-        (*functions_splited_field)[len] = '\0';
+    if (startFunctions && functionsSplitedField) {
+        size_t len = (endFunctions ? endFunctions : yaml + strlen(yaml)) - startFunctions;
+        *functionsSplitedField = (char*) malloc((len+1)*sizeof(char));
+        strncpy(*functionsSplitedField, startFunctions, len);
+        (*functionsSplitedField)[len] = '\0';
     }
     Serial.println("yaml splited. ready for parsing");
 }
 
-void parseYAML(const int field_type, const char * yamlContent) {
+void parseYAML(const int fieldType, const char * yamlContent) {
   JsonDocument doc;
   DeserializationError error = deserializeYml(doc, yamlContent);
   if ( error ) {
@@ -321,7 +258,7 @@ void parseYAML(const int field_type, const char * yamlContent) {
     return;
   }
     // Parse General Entries
-  switch (field_type) {
+  switch (fieldType) {
     case GENERAL_FIELD: {
         // Parse General
         JsonArray generalArray = doc["general"];
@@ -503,7 +440,7 @@ void printGeneral(const General& general) {
     Serial.println(general.code);
 }
 
-void printParameter(const Parameter& parameter, const String& parameterName = "") {
+void printParameter(const Parameter& parameter, const String& parameterName) {
     if (!parameterName.isEmpty()) {
         Serial.print("  Parameter Name: ");
         Serial.println(parameterName);
@@ -573,47 +510,47 @@ void printFunction(const Function& function) {
 
 void splitSensorsField(const char* yaml){
     Serial.println("splitting sensors");
-    const char* sensors_start = strstr(yaml, "sensors:");
-    if (!sensors_start) {
+    const char* sensorsStart = strstr(yaml, "sensors:");
+    if (!sensorsStart) {
         Serial.println("No sensors section found.");
         return;
     }
 
     // Skip past the "sensors:" line
-    sensors_start = strstr(sensors_start, "- name:");
+    sensorsStart = strstr(sensorsStart, "- name:");
 
     // Loop to process each sensor entry
     int i = 0;
-    while (strstr(sensors_start, "- name:") && (i < 7)) { // Limit to 7 for testing purposes, can be removed
-        char* str_title = "sensors:\n  "; // each sensor will have the field title to maintain yaml format
+    while (strstr(sensorsStart, "- name:") && (i < 7)) { // Limit to 7 for testing purposes, can be removed
+        char* strTitle = "sensors:\n  "; // each sensor will have the field title to maintain yaml format
         
         // Find the next "- name:" to mark the end of the current sensor
-        const char* sensor_end = strstr(sensors_start + 1, "- name:");
-        if (sensor_end == nullptr) {
-            sensor_end = yaml + strlen(yaml);  // End of the string
+        const char* sensorsEnd = strstr(sensorsStart + 1, "- name:");
+        if (sensorsEnd == nullptr) {
+            sensorsEnd = yaml + strlen(yaml);  // End of the string
         }
 
         // Allocate memory for the single sensor block, including the header "sensors:"
-        char* single_sensor = (char*)malloc(
-            (sensor_end - sensors_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
-        if (single_sensor == nullptr) {
+        char* singleSensor = (char*)malloc(
+            (sensorsEnd - sensorsStart + strlen(strTitle) + 1) * sizeof(char));  // +1 for null terminator
+        if (singleSensor == nullptr) {
             Serial.println("Memory allocation failed.");
             return;
         }
 
         // Copy "sensors:" header and the current sensor block while maintaining yaml format
-        strncpy(single_sensor, str_title, strlen(str_title));
-        strncpy(&single_sensor[strlen(str_title)], sensors_start, sensor_end - sensors_start);
-        single_sensor[sensor_end - sensors_start + strlen(str_title)] = '\0';  // Null-terminate the string
+        strncpy(singleSensor, strTitle, strlen(strTitle));
+        strncpy(&singleSensor[strlen(strTitle)], sensorsStart, sensorsEnd - sensorsStart);
+        singleSensor[sensorsEnd - sensorsStart + strlen(strTitle)] = '\0';  // Null-terminate the string
 
         // Parsing the sensor using yaml parser and saving in a struct
-        parseYAML(SENSORS_FIELD, single_sensor);
+        parseYAML(SENSORS_FIELD, singleSensor);
         
         // Move to the next sensor entry
-        sensors_start = sensor_end;
+        sensorsStart = sensorsEnd;
 
         // Free the allocated memory after processing
-        free(single_sensor);
+        free(singleSensor);
         // i++; // Increment to avoid infinite loop
     }
       // Print Sensor details
@@ -627,47 +564,47 @@ void splitSensorsField(const char* yaml){
 
 void splitFunctionsField(const char* yaml ){
   Serial.println("splitting functions");
-    const char* functions_start = strstr(yaml, "functions:");
-    if (!functions_start) {
+    const char* functionsStart = strstr(yaml, "functions:");
+    if (!functionsStart) {
         Serial.println("No functions section found.");
         return;
     }
 
     // Skip past the "functions:" line
-    functions_start = strstr(functions_start, "- name:");
+    functionsStart = strstr(functionsStart, "- name:");
 
     // Loop to process each function entry
     int i=0;
-    while (strstr(functions_start, "- name:") && (i<7)) {
-        char* str_title="functions:\n  "; //each function will have the field title to maintain yaml format for parsing
+    while (strstr(functionsStart, "- name:") && (i<7)) {
+        char* strTitle="functions:\n  "; //each function will have the field title to maintain yaml format for parsing
         
         // Find the next "- name:" to mark the end of the current function
-        const char* function_end = strstr(functions_start + 1, "- name:");
-        if (function_end == nullptr) {
-            function_end = yaml + strlen(yaml);  // End of the string
+        const char* functionEnd = strstr(functionsStart + 1, "- name:");
+        if (functionEnd == nullptr) {
+            functionEnd = yaml + strlen(yaml);  // End of the string
         }
 
         // Allocate memory for the single function block, including the header "functions:"
-        char* single_function = (char*)malloc(
-            (function_end - functions_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
-        if (single_function == nullptr) {
+        char* singleFunction = (char*)malloc(
+            (functionEnd - functionsStart + strlen(strTitle) + 1) * sizeof(char));  // +1 for null terminator
+        if (singleFunction == nullptr) {
             Serial.println("Memory allocation failed.");
             return;
         }
 
         // Copy "functions:" header and the current function block while maintaining yaml format
-        strncpy(single_function, str_title, strlen(str_title));
-        strncpy(&single_function[strlen(str_title)], functions_start, function_end - functions_start);
-        single_function[function_end - functions_start + strlen(str_title)] = '\0';  // Null-terminate the string
+        strncpy(singleFunction, strTitle, strlen(strTitle));
+        strncpy(&singleFunction[strlen(strTitle)], functionsStart, functionEnd - functionsStart);
+        singleFunction[functionEnd - functionsStart + strlen(strTitle)] = '\0';  // Null-terminate the string
 
         //Parsing the function using yaml parser and saving in a struct
-        parseYAML(FUNCTIONS_FIELD, single_function);
+        parseYAML(FUNCTIONS_FIELD, singleFunction);
         
         // Move to the next function entry
-        functions_start = function_end;
+        functionsStart = functionEnd;
 
         // Free the allocated memory after processing
-        free(single_function);
+        free(singleFunction);
     }
     Serial.println("=== Functions ===");
     for (const auto& function : functions) {
@@ -679,47 +616,47 @@ void splitFunctionsField(const char* yaml ){
 
 void splitGeneralField(const char* yaml) {
     Serial.println("splitting general");
-    const char* general_start = strstr(yaml, "general:");
-    if (!general_start) {
+    const char* generalStart = strstr(yaml, "general:");
+    if (!generalStart) {
         Serial.println("No general section found.");
         return;
     }
 
     // Skip past the "general:" line
-    general_start = strstr(general_start, "- name:");
+    generalStart = strstr(generalStart, "- name:");
 
     // Loop to process each general entry
     int i = 0;
-    while (strstr(general_start, "- name:") && (i < 7)) {  // Limit to 7 for testing, can be removed
-        char* str_title = "general:\n  ";  // Each general entry will have the field title to maintain YAML format
+    while (strstr(generalStart, "- name:") && (i < 7)) {  // Limit to 7 for testing, can be removed
+        char* strTitle = "general:\n  ";  // Each general entry will have the field title to maintain YAML format
         
         // Find the next "- name:" to mark the end of the current general entry
-        const char* general_end = strstr(general_start + 1, "- name:");
-        if (general_end == nullptr) {
-            general_end = yaml + strlen(yaml);  // End of the string
+        const char* generalEnd = strstr(generalStart + 1, "- name:");
+        if (generalEnd == nullptr) {
+            generalEnd = yaml + strlen(yaml);  // End of the string
         }
 
         // Allocate memory for the single general block, including the header "general:"
-        char* single_general = (char*)malloc(
-            (general_end - general_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
-        if (single_general == nullptr) {
+        char* singleGeneral = (char*)malloc(
+            (generalEnd - generalStart + strlen(strTitle) + 1) * sizeof(char));  // +1 for null terminator
+        if (singleGeneral == nullptr) {
             Serial.println("Memory allocation failed.");
             return;
         }
 
         // Copy "general:" header and the current general block while maintaining YAML format
-        strncpy(single_general, str_title, strlen(str_title));
-        strncpy(&single_general[strlen(str_title)], general_start, general_end - general_start);
-        single_general[general_end - general_start + strlen(str_title)] = '\0';  // Null-terminate the string
+        strncpy(singleGeneral, strTitle, strlen(strTitle));
+        strncpy(&singleGeneral[strlen(strTitle)], generalStart, generalEnd - generalStart);
+        singleGeneral[generalEnd - generalStart + strlen(strTitle)] = '\0';  // Null-terminate the string
 
         // Parsing the general using yaml parser and saving in a struct
-        parseYAML(GENERAL_FIELD, single_general);
+        parseYAML(GENERAL_FIELD, singleGeneral);
 
         // Move to the next general entry
-        general_start = general_end;
+        generalStart = generalEnd;
 
         // Free the allocated memory after processing
-        free(single_general);
+        free(singleGeneral);
         // i++;  // Increment to avoid infinite loop
     }
     return;
@@ -727,51 +664,51 @@ void splitGeneralField(const char* yaml) {
 
 void splitMotorsField(const char* yaml) {
     Serial.println("splitting motors");
-    const char* motors_start = strstr(yaml, "motors:");
-    if (!motors_start) {
+    const char* motorsStart = strstr(yaml, "motors:");
+    if (!motorsStart) {
         Serial.println("No motors section found.");
         return;
     }
 
     // Skip past the "motors:" line
-    motors_start = strstr(motors_start, "- name:");
+    motorsStart = strstr(motorsStart, "- name:");
 
     // Loop to process each motor entry
     Serial.println("before while");
     int i = 0;
-    while (strstr(motors_start, "- name:") && (i < 7)) {  // Limit to 7 for testing, can be removed
-        char* str_title = "motors:\n  ";  // Each motor entry will have the field title to maintain YAML format
+    while (strstr(motorsStart, "- name:") && (i < 7)) {  // Limit to 7 for testing, can be removed
+        char* strTitle = "motors:\n  ";  // Each motor entry will have the field title to maintain YAML format
         
         // Find the next "- name:" to mark the end of the current motor entry
-        const char* motors_end = strstr(motors_start + 1, "- name:");
-        if (motors_end == nullptr) {
-            motors_end = yaml + strlen(yaml);  // End of the string
+        const char* motorsEnd = strstr(motorsStart + 1, "- name:");
+        if (motorsEnd == nullptr) {
+            motorsEnd = yaml + strlen(yaml);  // End of the string
         }
         Serial.println("before malloc");
 
         // Allocate memory for the single motor block, including the header "motors:"
-        char* single_motor = (char*)malloc(
-            (motors_end - motors_start + strlen(str_title) + 1) * sizeof(char));  // +1 for null terminator
-        if (single_motor == nullptr) {
+        char* singleMotor = (char*)malloc(
+            (motorsEnd - motorsStart + strlen(strTitle) + 1) * sizeof(char));  // +1 for null terminator
+        if (singleMotor == nullptr) {
             Serial.println("Memory allocation failed.");
             return;
         }
         Serial.println("before strcpy");
 
         // Copy "motors:" header and the current motor block while maintaining YAML format
-        strncpy(single_motor, str_title, strlen(str_title));
-        strncpy(&single_motor[strlen(str_title)], motors_start, motors_end - motors_start);
-        single_motor[motors_end - motors_start + strlen(str_title)] = '\0';  // Null-terminate the string
+        strncpy(singleMotor, strTitle, strlen(strTitle));
+        strncpy(&singleMotor[strlen(strTitle)], motorsStart, motorsEnd - motorsStart);
+        singleMotor[motorsEnd - motorsStart + strlen(strTitle)] = '\0';  // Null-terminate the string
         Serial.println("parse");
 
         // Parsing the motor using yaml parser and saving in a struct
-        parseYAML(MOTORS_FIELD, single_motor);
+        parseYAML(MOTORS_FIELD, singleMotor);
 
         // Move to the next motor entry
-        motors_start = motors_end;
+        motorsStart = motorsEnd;
 
         // Free the allocated memory after processing
-        free(single_motor);
+        free(singleMotor);
         // i++;  // Increment to avoid infinite loop
     }
     Serial.println("=== Motors ===");
@@ -786,23 +723,22 @@ void initDefaultYaml() {
   
   // turn on if you want only to create a string in a yaml file for debuging
   const char* yamlContent = createDefaultYamlString();
-  char* motors_splited_field; 
-  char *general_splited_field; 
-  char *sensors_splited_field; 
-  char*functions_splited_field;
+  char* motorsSplitedField; 
+  char* generalSplitedField; 
+  char* sensorsSplitedField; 
+  char* functionsSplitedField;
   splitYaml(
       yamlContent,
-      &general_splited_field,
-      &sensors_splited_field,
-      &motors_splited_field,
-      &functions_splited_field);
-  splitMotorsField((char*)motors_splited_field);
-  free(motors_splited_field);
-  splitSensorsField((char*)sensors_splited_field);
-  free(sensors_splited_field);
-  splitGeneralField((char*)general_splited_field);
-  free(general_splited_field);
-  splitFunctionsField((char*)functions_splited_field);
-  free(functions_splited_field);
+      &generalSplitedField,
+      &sensorsSplitedField,
+      &motorsSplitedField,
+      &functionsSplitedField);
+  splitMotorsField((char*)motorsSplitedField);
+  free(motorsSplitedField);
+  splitSensorsField((char*)sensorsSplitedField);
+  free(sensorsSplitedField);
+  splitGeneralField((char*)generalSplitedField);
+  free(generalSplitedField);
+  splitFunctionsField((char*)functionsSplitedField);
+  free(functionsSplitedField);
 }
-#endif //SHARED_YAMEL_PARSER_H

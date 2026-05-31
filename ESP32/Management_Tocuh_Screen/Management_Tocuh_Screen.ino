@@ -1,104 +1,14 @@
 #include <lvgl.h>
 #include <atomic>
 #include <Arduino_GFX_Library.h>
-#include "ble_nimble_server.h"
-#include "requests.h"
-#include "shared_yaml_parser.h"
-
-#define TFT_BL 27
-#define GFX_BL DF_GFX_BL // default backlight pin
-
-/* Display configuration */
-Arduino_DataBus *bus = new Arduino_ESP32SPI(
-    2 /* DC */,
-    15 /* CS */,
-    14 /* SCK */,
-    13 /* MOSI */,
-    GFX_NOT_DEFINED /* MISO */);
-Arduino_GFX *gfx = new Arduino_ST7789(bus, -1 /* RST */, 3 /* rotation */, true /* IPS */);
-
-/* Touch include */
-#include "touch.h"
-#define STACK_SIZE 8192
-
-// define hex_colors
-#define HEX_BLACK lv_color_hex(0x000000) // Black
-#define HEX_WHITE lv_color_hex(0xffffff) // White
-#define HEX_LIGHT_GRAY lv_color_hex(0xf4f4f4) // Light Gray
-#define HEX_LIGHT_GRAY_2 lv_color_hex(0xdfdfdf) // Light Gray_2
-#define HEX_MEDIUM_GRAY lv_color_hex(0xCACACA) // Medium Gray
-#define HEX_DARK_GRAY lv_color_hex(0x404040) // Dark Gray
-#define HEX_DARK_BLUE lv_color_hex(0x00008b) // Dark Blue
-#define HEX_ROYAL_BLUE lv_color_hex(0x4169e1) // Royal Blue
-#define HEX_SKY_BLUE lv_color_hex(0x00bfff) // Sky Blue
-#define HEX_PINK lv_color_hex(0xffc0cb) // Pink
-#define HEX_PURPLE lv_color_hex(0x800080) // Purple
-#define HEX_RED lv_color_hex(0xc30a12) // Red
-#define HEX_BABY_PINK lv_color_hex(0xf4c2c2) // Baby Pink
-#define HEX_BURGUNDY lv_color_hex(0x800020) // Burgundy
-#define HEX_GOLD lv_color_hex(0xffd700) // Gold
-#define HEX_TURQUOISE lv_color_hex(0x40e0d0) // Turquoise
-#define HEX_LIGHT_PURPLE lv_color_hex(0xda70d6) // Light Purple
-#define HEX_MEDIUM_PURPLE lv_color_hex(0x9370db) // Medium Purple
-#define HEX_DARK_PURPLE lv_color_hex(0x663399) // Dark Purple
-#define HEX_YELLOW lv_color_hex(0xf7edbe) // Bannana yellow
-#define HEX_GREEN lv_color_hex(0x047a04) // Green
-
-/* Change to your screen resolution */
-static uint32_t screenWidth;
-static uint32_t screenHeight;
-static lv_disp_draw_buf_t drawBuf;
-static lv_color_t *dispDrawBuf;
-static lv_disp_drv_t disp_drv;
-static lv_obj_t *tabview;  // Declare the global tabview variable
-static lv_obj_t* techTab = NULL;
-
-static bool isUser = false;
-static bool isTech = false;
-static bool yamlStructsReady = false;
-static bool initialUserScreenFlag = false;
-static bool hasUnsavedChanges = false;
-static bool currIsSetup = false;
-static std::vector<lv_obj_t*> sensorSwitchVec;
-static lv_obj_t* sendNewSwitchesMsgBox = NULL;
-// static lv_obj_t* currMsgBox = NULL;
-static lv_obj_t* saveBtn = NULL;
-static lv_obj_t* saveBtnTechSensors = NULL;
-static lv_obj_t* saveBtnTechMotors = NULL;
-lv_obj_t * meter = NULL;
-
-static lv_obj_t* msgBoxParent = NULL;
-static std::vector<lv_obj_t*> objsToDeleteSensors;
-static std::vector<lv_obj_t*> objsToDeleteMotors;
-static int currentEditSensorId = -1;
-static int currentEditMotorId = -1;
-
-static std::vector<lv_obj_t*> currentEditSensorSlidersVec;
-static std::vector<lv_obj_t*> currentEditMotorSlidersVec;
-
-static uint16_t currTechTabviewId = 4;
-static lv_obj_t* techTabview = NULL;
-static lv_obj_t * dropdownMotors = NULL;
-static lv_obj_t * dropdownSensors = NULL;
-static lv_obj_t * dropdownMotorsActivity = NULL;
-static lv_obj_t * techTabMotors = NULL;
-static lv_obj_t * techTabSensors = NULL;
-static lv_obj_t * techTabMotorsActivity = NULL;
-static bool sensorTriggeredByTechTab = false;
-static bool motorTriggeredByTechTab = false;
-
-int num_points = 80; // Number of points in the chart
-static lv_obj_t *show_chart_btn;
-
-int techPass;
-int debugPass; 
-
-lv_obj_t *initialUserScreen = NULL; //
-lv_obj_t *readYamlFromProtScreen = NULL;
-lv_obj_t* searchBleScreen = NULL;
-lv_obj_t *passwordScreen = NULL;
-static lv_obj_t *textarea = NULL;
-static lv_obj_t* msgCloseBtn = NULL;
+#include <vector>
+#include <esp32-hal.h>
+#include <NimBLEDevice.h>
+#include <string>
+#include <Arduino.h>
+#include "ConfigParams.h"
+#include "Touch.h"
+#include "BLEServer.h"
 
 char selectedTextToTitle[32]; 
 
@@ -881,20 +791,20 @@ static int getSensorValue() {
 
 static void updateChartReq(lv_timer_t *t) {
   int* arr = static_cast<int*>(t->user_data);
-  char* msg_to_send=(char*)malloc(MAX_MSG_LEN);
-  int pos = 0;
-  String is_motor_str =String(arr[0]);
-  strcpy(&(msg_to_send[pos]), is_motor_str.c_str());
-  pos+=is_motor_str.length();
-  strcpy(&msg_to_send[pos++],"|");
-  String hardware_id_str =String(arr[1]);
-  strcpy(&(msg_to_send[pos]), hardware_id_str.c_str());
-  SendNotifyToClient(msg_to_send, READ_REQ, pCharacteristic);
-  free(msg_to_send);
+  char* msgToSend=(char*)malloc(MAX_MSG_LEN);
+  int ind = 0;
+  String isMotorStr =String(arr[0]);
+  strcpy(&(msgToSend[ind]), isMotorStr.c_str());
+  ind+=isMotorStr.length();
+  strcpy(&msgToSend[ind++],"|");
+  String hardwareIdStr =String(arr[1]);
+  strcpy(&(msgToSend[ind]), hardwareIdStr.c_str());
+  SendNotifyToClient(msgToSend, READ_REQ, pCharacteristic);
+  free(msgToSend);
 }
 
 // Timer callback to update the chart
-static void update_chart(lv_timer_t *t) {
+static void updateChart(lv_timer_t *t) {
     lv_chart_set_next_value(chart, ser, getSensorValue());
 
     // Create a gap by setting the next few points to LV_CHART_POINT_NONE
@@ -916,7 +826,7 @@ static void update_chart(lv_timer_t *t) {
 }
 
 // Button event callback to show the chart
-static void showChartEventCB(bool is_motor, int id) {
+static void showChartEventCB(bool isMotor, int id) {
 
     // Hide elements that we dont want right now
     lv_obj_add_flag(dropdownMotorsObj, LV_OBJ_FLAG_HIDDEN);
@@ -931,47 +841,47 @@ static void showChartEventCB(bool is_motor, int id) {
     lv_obj_align(chart, LV_ALIGN_BOTTOM_MID, 0, -30);
 
     // Set chart parameters
-    lv_chart_set_point_count(chart, num_points);
+    lv_chart_set_point_count(chart, numPoints);
     ser = lv_chart_add_series(chart, HEX_DARK_BLUE, LV_CHART_AXIS_PRIMARY_Y);
     lv_obj_set_style_size(chart, 0, LV_PART_INDICATOR);    
     static int arr[2];  // Declare static array without initialization
-    arr[0] = (int)is_motor;  // Update dynamically
+    arr[0] = (int)isMotor;  // Update dynamically
     arr[1] = id;
 
     if (isDemoYaml.test_and_set()) {
-      if (chart_timer) {
-        lv_timer_del(chart_timer); // Stop the timer
-        chart_timer = NULL;
+      if (chartTimer) {
+        lv_timer_del(chartTimer); // Stop the timer
+        chartTimer = NULL;
       }
-      chart_timer = lv_timer_create(update_chart, 200, static_cast<void*>(arr)); // update_chart without BLE
+      chartTimer = lv_timer_create(updateChart, 200, static_cast<void*>(arr)); // updateChart without BLE
 
     }else{
       isDemoYaml.clear();
-      chart_timer = lv_timer_create(updateChartReq, 200, static_cast<void*>(arr)); // updateChartReq - request
+      chartTimer = lv_timer_create(updateChartReq, 200, static_cast<void*>(arr)); // updateChartReq - request
     }
     // Create the "Close Chart" button
-    close_chart_btn = lv_btn_create(debugTab);
-    lv_obj_set_size(close_chart_btn, 100, 25);
-    lv_obj_align(close_chart_btn, LV_ALIGN_BOTTOM_MID, 0, 0);
+    closeChartBTN = lv_btn_create(debugTab);
+    lv_obj_set_size(closeChartBTN, 100, 25);
+    lv_obj_align(closeChartBTN, LV_ALIGN_BOTTOM_MID, 0, 0);
 
-    lv_obj_set_style_bg_color(close_chart_btn, HEX_DARK_BLUE, 0);
-    lv_obj_t * label = lv_label_create(close_chart_btn);
+    lv_obj_set_style_bg_color(closeChartBTN, HEX_DARK_BLUE, 0);
+    lv_obj_t * label = lv_label_create(closeChartBTN);
     lv_label_set_text(label, "Close Chart");
     lv_obj_center(label);
     lv_obj_set_style_text_font(label,&lv_font_montserrat_12,0);
 
-    lv_obj_add_event_cb(close_chart_btn, closeChartEventCB, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(closeChartBTN, closeChartEventCB, LV_EVENT_CLICKED, NULL);
     // Create a title label
-    title_label_bug = lv_label_create(debugTab); 
-    lv_label_set_text(title_label_bug, selectedTextToTitle);
-    lv_obj_align(title_label_bug, LV_ALIGN_TOP_MID, 0, 0); 
-    lv_obj_set_style_text_font(title_label_bug, &lv_font_montserrat_18, 0);
+    debugLabel = lv_label_create(debugTab); 
+    lv_label_set_text(debugLabel, selectedTextToTitle);
+    lv_obj_align(debugLabel, LV_ALIGN_TOP_MID, 0, 0); 
+    lv_obj_set_style_text_font(debugLabel, &lv_font_montserrat_18, 0);
 }
 // Button event callback to close the chart
 static void closeChartEventCB(lv_event_t * e) {
-  if (chart_timer) {
-    lv_timer_del(chart_timer); // Stop the timer
-    chart_timer = NULL;
+  if (chartTimer) {
+    lv_timer_del(chartTimer); // Stop the timer
+    chartTimer = NULL;
   }
   
   delay(200); // To make sure that the last message was handled properly
@@ -980,14 +890,14 @@ static void closeChartEventCB(lv_event_t * e) {
     lv_obj_del(chart);
     chart = NULL;
   }
-  if (close_chart_btn) {// Delete the close button
-    lv_obj_del(close_chart_btn);
-    close_chart_btn = NULL;
+  if (closeChartBTN) {// Delete the close button
+    lv_obj_del(closeChartBTN);
+    closeChartBTN = NULL;
   }
   ser = NULL;
-  if(title_label_bug){
-    lv_obj_del(title_label_bug);
-    title_label_bug = NULL;
+  if(debugLabel){
+    lv_obj_del(debugLabel);
+    debugLabel = NULL;
   }
   // Show back the elements  we hid
   lv_obj_clear_flag(dropdownMotorsObj, LV_OBJ_FLAG_HIDDEN);
@@ -1001,16 +911,16 @@ static void showDropdownChartCB(lv_event_t * e) {
     lv_dropdown_get_selected_str(dropdown, selected_text, sizeof(selected_text));
     strcpy(selectedTextToTitle,selected_text);
     
-    String selected_text_str = String(selected_text);
+    String selectedTextStr = String(selected_text);
 
     // Determine if this is the motors dropdown or sensors dropdown
-    bool is_motor = (dropdown == dropdownMotorsObj);
+    bool isMotor = (dropdown == dropdownMotorsObj);
 
     int id = 0;
 
-    if (is_motor) {
+    if (isMotor) {
         for (const auto& motor : motors) { 
-            if (motor.name == selected_text_str) {
+            if (motor.name == selectedTextStr) {
                 break;
             }
             id++;
@@ -1020,7 +930,7 @@ static void showDropdownChartCB(lv_event_t * e) {
         }
     } else {
         for (const auto& sensor : sensors) {
-            if (sensor.name == selected_text_str) {
+            if (sensor.name == selectedTextStr) {
                 break;
             }
             id++;
@@ -1029,12 +939,12 @@ static void showDropdownChartCB(lv_event_t * e) {
           return;
         }
     }    
-    showChartEventCB(is_motor, id);
+    showChartEventCB(isMotor, id);
 }
 
-char* getOptionsString(bool is_motors){
+char* getOptionsString(bool isMotors){
   int totalLength  = 0;
-  if(is_motors){
+  if(isMotors){
     for (const auto& motor : motors) {
       totalLength += motor.name.length() + 1;
 
@@ -1080,11 +990,11 @@ char* getOptionsString(bool is_motors){
   }
 }
 
-lv_obj_t* createDropdownsDebugMode(lv_obj_t* parent, bool is_motors){
+lv_obj_t* createDropdownsDebugMode(lv_obj_t* parent, bool isMotors){
   lv_obj_t * dropdown = lv_dropdown_create(parent);
   lv_obj_align(dropdown, LV_ALIGN_TOP_LEFT, -10, -10);
-  char* options = getOptionsString(is_motors);
-  if(is_motors){
+  char* options = getOptionsString(isMotors);
+  if(isMotors){
     lv_dropdown_set_text(dropdown, "Motor");
   } else{
     lv_dropdown_set_text(dropdown, "Sensor");
@@ -2016,30 +1926,30 @@ void loadYamlStep(lv_event_t* e) {
       }
       if (isYmlSensorsReady) {
           sensors.clear(); // making sure to clear demo yaml data before replacong it with real data
-          splitSensorsField((char*)*pointer_to_sensor_buff);
+          splitSensorsField((char*)*pointerToSensorBuff);
           isYmlSensorsReady = false;
-          free(*pointer_to_sensor_buff);
+          free(*pointerToSensorBuff);
       }
 
       if (isYmlMotorsReady) {
         motors.clear(); // making sure to clear demo yaml data before replacong it with real data
-        splitMotorsField((char*)*pointer_to_motors_buff);
+        splitMotorsField((char*)*pointerToMotorsBuff);
         isYmlMotorsReady = false;
-        free(*pointer_to_motors_buff);
+        free(*pointerToMotorsBuff);
       }
 
       if (isYmlFunctionsReady) {
         functions.clear(); // making sure to clear demo yaml data before replacong it with real data
-        splitFunctionsField((char*)*pointer_to_func_buff);
+        splitFunctionsField((char*)*pointerToFuncBuff);
         isYmlFunctionsReady = false;
-        free(*pointer_to_func_buff);
+        free(*pointerToFuncBuff);
       }
 
       if (isYmlGeneralReady) {
         generalEntries.clear(); // making sure to clear demo yaml data before replacong it with real data
-        splitGeneralField((char*)*pointer_to_general_buff);
+        splitGeneralField((char*)*pointerToGeneralBuff);
         isYmlGeneralReady = false;
-        free(*pointer_to_general_buff);
+        free(*pointerToGeneralBuff);
         yamlStructsReady = true;
       }
 
@@ -2422,6 +2332,43 @@ void returnToMain(lv_event_t *e) {
       lv_scr_load_anim(initialUserScreen, LV_SCR_LOAD_ANIM_NONE, 0, 0, true);
     }
 }
+
+// //delete debug screens objects
+// void deleteDebug(){
+//   if (chartTimer) {
+//     lv_timer_del(chartTimer); // Stop the timer
+//     chartTimer = NULL;
+//   }
+//   delay(200);
+//   if(debugLabel){
+//     lv_obj_del(debugLabel);
+//     debugLabel = NULL;
+//   }
+//   if (chart) {// Delete the chart
+//     lv_obj_del(chart);
+//     chart = NULL;
+//   }
+//   if (closeChartBTN) {// Delete the close button
+//     lv_obj_del(closeChartBTN);
+//     closeChartBTN = NULL;
+//   }
+//   if(dropdownMotorsObj){
+//     lv_obj_del(dropdownMotorsObj);
+//     dropdownMotorsObj = NULL;
+//   }
+//   if(dropdownSensorsObj){
+//     lv_obj_del(dropdownSensorsObj);
+//     dropdownSensorsObj = NULL;
+//   }
+//   if (TabviewObjDebugMode){
+//     lv_obj_del(TabviewObjDebugMode);
+//     TabviewObjDebugMode = NULL;
+//   }
+//   if(debugTab){
+//     lv_obj_del(debugTab);
+//     debugTab = NULL;
+//   }
+// }
 
 void loop(){
   lv_timer_handler(); /* let the GUI do its work */
