@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
-#include "SharedComVars.h"
+#include <SharedComVars.h>
 #include "ModularFunctionsHandeling.h"
 #include "Requests.h"
 

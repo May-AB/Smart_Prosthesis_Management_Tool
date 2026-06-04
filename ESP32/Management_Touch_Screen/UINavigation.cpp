@@ -8,7 +8,7 @@
 #include "ConfigParams.h"
 #include "Touch.h"
 #include "BLEServer.h"
-#include "SharedYamlParser.h"
+#include <SharedYamlParser.h>
 #include "UIShared.h"
 #include "UIUserMode.h"
 #include "UITechMode.h"
@@ -168,7 +168,7 @@ void startDemoEvent(lv_event_t * e) {
   generalEntries.clear();
   fileType.clear();
 
-  initDefaultYaml();
+  initYaml(createDemoYamlString());
   setupInitialUserScreen();
 }
 

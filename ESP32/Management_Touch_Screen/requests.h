@@ -3,8 +3,8 @@
 #ifndef REQUESTS_H
 #define REQUESTS_H
 
-#include "SharedComVars.h"
-#include "SharedYamlParser.h"
+#include <SharedComVars.h>
+#include <SharedYamlParser.h>
 
 // Initialize YAML flags
 extern bool isYmlGeneralReady;

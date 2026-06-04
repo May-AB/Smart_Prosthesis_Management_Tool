@@ -1,23 +1,9 @@
-//#include <Arduino.h>
 #include <lvgl.h>
-// #include <atomic>
 #include <Arduino_GFX_Library.h>
-// #include <vector>
-// #include <esp32-hal.h>
-// #include <NimBLEDevice.h>
-// #include <string>
-// #include <Arduino.h>
 
 #include "ConfigParams.h"
 #include "Touch.h"
 #include "BLEServer.h"
-// #include "SharedYamlParser.h"
-
-// // Mode modules includes
-// #include "UIShared.h"
-// #include "UIUserMode.h"
-// #include "UITechMode.h"
-// #include "UIDebugMode.h"
 #include "UINavigation.h"
 
 void setup()

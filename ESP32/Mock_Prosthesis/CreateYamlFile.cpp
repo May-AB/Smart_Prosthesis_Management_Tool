@@ -31,6 +31,7 @@ String ReadYmlUsingSPIFFS(String DefaultYamlContent) {
       return "0";
   }
   Serial.println("SPIFFS initialized successfully!");
+  /*
   /////////////// in case you want to remove the yaml file and rewritie it
   if (SPIFFS.exists(configYaml)) {
         Serial.print("Deleting file: ");
@@ -46,6 +47,7 @@ String ReadYmlUsingSPIFFS(String DefaultYamlContent) {
         Serial.print("File does not exist: ");
         Serial.println(configYaml);
   }
+  */
   /////////////
   if ( SPIFFS.exists(configYaml)) {
     Serial.println("File "+ configYaml +" found!");

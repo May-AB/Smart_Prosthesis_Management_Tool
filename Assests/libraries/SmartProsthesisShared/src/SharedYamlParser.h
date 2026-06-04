@@ -1,18 +1,27 @@
-#include "HardwareSerial.h"
-#ifndef SHARED_YAMEL_PARSER_H
-#define SHARED_YAMEL_PARSER_H
+#ifndef SHARED_YAML_PARSER_H
+#define SHARED_YAML_PARSER_H
 
+#include <Arduino.h>
 #include <vector>
 #include <map>
-#include <Arduino.h>
 #include <ArduinoJson.h>
 #include <YAMLDuino.h>
-#include "CreateYamlFile.h"
 #include "SharedComVars.h"
 
-#include <stdio.h>
-#include <string.h>
+#define FUNC_TYPE_GESTURE "gesture"
 
+// YAML pointers (used for BLE on Management Touch Screen)
+extern uint8_t* motorsYamlBuffer;
+extern uint8_t* sensorsYamlBuffer;
+extern uint8_t* funcsYamlBuffer;
+extern uint8_t* generalYamlBuffer;
+
+extern uint8_t** pointerToSensorBuff;
+extern uint8_t** pointerToMotorsBuff;
+extern uint8_t** pointerToFuncBuff;
+extern uint8_t** pointerToGeneralBuff;
+
+// Split fields (used on Mock Prosthesis and management split flows)
 extern char* motorsSplitedField; 
 extern char* generalSplitedField; 
 extern char* sensorsSplitedField; 
@@ -85,9 +94,17 @@ extern std::vector<Sensor> sensors;
 extern std::vector<Motor> motors;
 extern std::vector<Function> functions;
 
+// YAML Parser function declarations
 const char* createDefaultYamlString();
-void splitYaml(const char* yaml, char **generalSplitedField=NULL, char **sensorsSplitedField=NULL, char **motorsSplitedField=NULL, char **functionsSplitedField=NULL);
+const char* createDemoYamlString();
+void splitYaml(
+    const char* yaml,
+    char **generalSplitedField = NULL,
+    char **sensorsSplitedField = NULL,
+    char **motorsSplitedField = NULL,
+    char **functionsSplitedField = NULL);
 void parseYAML(const int fieldType, const char * yamlContent);
+void parseYAMLDemo (const String& yamlContent);
 void printGeneral(const General& general);
 void printParameter(const Parameter& parameter, const String& parameterName = "");
 void printSensorFunction(const SensorFunction& function);
@@ -99,6 +116,8 @@ void splitSensorsField(const char* yaml);
 void splitFunctionsField(const char* yaml);
 void splitGeneralField(const char* yaml);
 void splitMotorsField(const char* yaml);
-void initYaml();
 
-#endif //SHARED_YAMEL_PARSER_H
+// Unified initialization function
+void initYaml(const char* yamlContent);
+
+#endif //SHARED_YAML_PARSER_H

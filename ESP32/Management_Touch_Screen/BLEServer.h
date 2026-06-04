@@ -1,8 +1,8 @@
 #ifndef BLE_NIMBLE_SERVER_H
 #define BLE_NIMBLE_SERVER_H
 
-#include "SharedComVars.h"
-#include "SharedYamlParser.h"
+#include <SharedComVars.h>
+#include <SharedYamlParser.h>
 #include "Requests.h"
 
 #include <vector>

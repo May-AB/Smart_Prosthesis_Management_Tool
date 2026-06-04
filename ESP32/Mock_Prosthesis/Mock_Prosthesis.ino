@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 
-#include "SharedComVars.h"
+#include <SharedComVars.h>
 #include "Requests.h"
 #include "CreateYamlFile.h"
-#include "SharedYamlParser.h"
+#include <SharedYamlParser.h>
 #include "ModularFunctionsHandeling.h"
 
 static const NimBLEAdvertisedDevice* advDevice;
@@ -451,7 +451,7 @@ void setup() {
     Serial.begin(115200);
     delay(3000);
     Serial.printf("Starting NimBLE Client\n");
-    initYaml();
+    initYaml(ReadYmlUsingSPIFFS(createDefaultYamlString()).c_str());
     /** Initialize NimBLE and set the device name */
     NimBLEDevice::init("NimBLE-Client");
     NimBLEScan* pScan = NimBLEDevice::getScan();

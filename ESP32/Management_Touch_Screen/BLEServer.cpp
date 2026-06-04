@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 #include <vector>
-#include "SharedComVars.h"
-#include "SharedYamlParser.h"
+#include <SharedComVars.h>
+#include <SharedYamlParser.h>
 #include "Requests.h"
 #include "ConfigParams.h"
 #include "BLEServer.h"
