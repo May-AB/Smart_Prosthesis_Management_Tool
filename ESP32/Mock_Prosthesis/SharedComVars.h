@@ -38,7 +38,7 @@ struct msgInterpeterStruct{
 
 uint8_t calculateChecksum(const char* data, size_t length);
 void ReciveMultipleMSGS(uint8_t** bufferToUse, struct msgInterpeterStruct structVal);
-uint8_t* strToByteMsg(int reqType, const char* msgStr, int msgNum = 1, int totalMsgNum = 1);
+void strToByteMsg(struct msgInterpeterStruct* msgBuff, int reqType, const char* msgStr, int msgNum = 1, int totalMsgNum = 1);
 void printByteArray(size_t length, const uint8_t* pData);
 void printMsg(struct msgInterpeterStruct* msg);
 

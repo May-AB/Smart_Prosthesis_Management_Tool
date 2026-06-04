@@ -8,23 +8,24 @@
 int currentSensorId = 0;
 char* sensorStatus = nullptr;
 
-// Simulating gestures functions
+// Simulating gestures functions. 
+// this should be replaced by the function that controls the gesture on the prosthesis side.
 void scissors(void) { printf("Run gesture scissors\n"); }
 void rock(void) { printf("Run gesture rock\n"); }
 void paper(void) { printf("Run gesture paper \n"); }
 void rest(void) { printf("Returning to rest position\n"); }
 
-// Simulating sensor state
+// Simulating sensor state. 
+// this should be replaced by the function that changes the sensor state on the prosthesis side.
 void ChangeSensorState(int currentSensorId, const char* sensorStatus) { 
   Serial.printf("old status is %s.\n",sensors[currentSensorId].status.c_str());
   sensors[currentSensorId].status=strcmp(sensorStatus,"1")==0 ? "on" : "off";
   Serial.printf("new status is %s.\n",sensors[currentSensorId].status.c_str());
 }
 
-int GetRealTimeData(int isMotor, int hardwareId) { 
-  //// WE ARE USING RAND() TO SIMULATE MOTOR AND SENSOR VALUES. 
-  /////HOWEVER, FOR THE REAL PROSTHESIS INSERT HERE THE MOTOR\SENSOR DATA SAMPLING USING ID
-
+// Simulating motor and sensor values. 
+// this should be replaced by the function that reads the motor and sensor values on the prosthesis side.
+int SampleMotorsAndSensors(int isMotor, int hardwareId) { 
   int min;
   int max;
   if(isMotor){

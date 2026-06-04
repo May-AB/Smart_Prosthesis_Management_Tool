@@ -26,6 +26,8 @@ std::vector<Sensor> sensors;
 std::vector<Motor> motors;
 std::vector<Function> functions;
 
+// This function creates a fake yaml like char array for demo mode.
+// Used for testing without BLE connection or a second esp32
 const char* createDefaultYamlString(){
   const char* yamlContent = R"(
 file_type: hand_system_configuration
@@ -174,26 +176,6 @@ functions:
 
   - name: 'rock'
     protocol_type: 'gesture'
-
-  - name: 'scissors'
-    protocol_type: 'gesture'
-
-  - name: 'paper'
-    protocol_type: 'gesture'
-
-  - name: 'rock'
-    protocol_type: 'gesture'
-
-  - name: 'scissors'
-    protocol_type: 'gesture'
-
-  - name: 'paper'
-    protocol_type: 'gesture'
-  
-  - name: 'rock'
-    protocol_type: 'gesture'
-
-
 )";
   return yamlContent;
 }

@@ -149,4 +149,6 @@ extern TaskHandle_t bleNotifyTaskHandle;
 #define MSG_SIZE (sizeof(struct msgInterpeterStruct))
 extern NimBLEServer *pServer;
 
+extern char selectedTextToTitle[32];
+
 #endif // CONFIGPARAMS_H

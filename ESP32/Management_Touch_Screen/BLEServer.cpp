@@ -12,7 +12,7 @@ void BLENotifyTask(void *parameter) {
     while (1) {
         if (bleNotifyTaskHandle){
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        Serial.println("Emerency Button pressed! Sending BLE notification...");
+        Serial.println("Emergency button pressed! Sending BLE notification...");
         SendEmergencyReq("STOP MOVEMENT!", EMERGENCY_STOP, pCharacteristic);
         } else {
           break;
@@ -21,36 +21,36 @@ void BLENotifyTask(void *parameter) {
 }
 
 void SendStatusChangeReq(std::vector<int> sensorsToOn, std::vector<int> sensorsToOff){
-  char* msgToSend=(char*)malloc(MAX_MSG_LEN);
+  char msgToSend[MAX_MSG_LEN];
   int ind = 0;
-  if (msgToSend!=NULL) {
+  msgToSend[0] = '\0';
 
-    for (size_t i=0; i<sensorsToOn.size(); i++){
-      String sensorID =String(sensorsToOn[i]);
-
-      strcpy(&(msgToSend[ind]), sensorID.c_str());
-      ind+=sensorID.length();
-      strcpy(&msgToSend[ind++],"|");
-      strcpy(&msgToSend[ind++],"1");
-      if (sensorsToOff.size()>0 || i<sensorsToOn.size()-1) {
-        strcpy(&msgToSend[ind++],"|");
+  for (size_t i = 0; i < sensorsToOn.size(); i++) {
+    int written = snprintf(&msgToSend[ind], sizeof(msgToSend) - ind, "%d|1", sensorsToOn[i]);
+    if (written > 0 && ind + written < (int)sizeof(msgToSend)) {
+      ind += written;
+    }
+    if (sensorsToOff.size() > 0 || i < sensorsToOn.size() - 1) {
+      if (ind < (int)sizeof(msgToSend) - 1) {
+        msgToSend[ind++] = '|';
+        msgToSend[ind] = '\0';
       }
     }
-
-    for (size_t i=0; i<sensorsToOff.size(); i++){
-      String sensorID =String(sensorsToOff[i]);
-      strcpy(&(msgToSend[ind]), sensorID.c_str());
-      ind+=sensorID.length();
-      strcpy(&(msgToSend[ind++]),"|");
-      strcpy(&(msgToSend[ind++]),"0");
-      if (i<sensorsToOff.size()-1) {
-        strcpy(&(msgToSend[ind++]),"|");
-      }
-    }
-
-    SendNotifyToClient(msgToSend, CHANGE_SENSOR_STATE_REQ, pCharacteristic);
-    free(msgToSend);
   }
+
+  for (size_t i = 0; i < sensorsToOff.size(); i++) {
+    int written = snprintf(&msgToSend[ind], sizeof(msgToSend) - ind, "%d|0", sensorsToOff[i]);
+    if (written > 0 && ind + written < (int)sizeof(msgToSend)) {
+      ind += written;
+    }
+    if (i < sensorsToOff.size() - 1) {
+      if (ind < (int)sizeof(msgToSend) - 1) {
+        msgToSend[ind++] = '|';
+        msgToSend[ind] = '\0';
+      }
+    }
+  }
+  SendNotifyToClient(msgToSend, CHANGE_SENSOR_STATE_REQ, pCharacteristic);
 }
 
 void SendSensorParamChangeReq(
@@ -58,61 +58,47 @@ void SendSensorParamChangeReq(
     std::vector<int> paramIdToChange,
     std::vector<int> parametersToChange)
 {
-  char* msgToSend=(char*)malloc(MAX_MSG_LEN);
-  
+  char msgToSend[MAX_MSG_LEN];
   int ind = 0;
-  if (msgToSend!=NULL) {
-    for (size_t i=0; i<paramIdToChange.size(); i++){
-      String sensorID =String(idSensorToChange);
-      String paramID =String(paramIdToChange[i]);
-      String parameter= String(parametersToChange[i]);
-      // Copy sensor ID
-      strcpy(&msgToSend[ind], sensorID.c_str());
-      ind += sensorID.length();
-      // Separator
-      msgToSend[ind++] = '|';
-      // Copy parameter ID
-      strcpy(&msgToSend[ind], paramID.c_str());
-      ind += paramID.length();
-      // Separator
-      msgToSend[ind++] = '|';
-      // Copy parameter
-      strcpy(&msgToSend[ind], parameter.c_str());
-      ind += parameter.length();
-      // Add separator if not the last item
-      if (i < paramIdToChange.size() - 1) {
-          msgToSend[ind++] = '|';
+  msgToSend[0] = '\0';
+  
+  for (size_t i=0; i<paramIdToChange.size(); i++){
+    int written = snprintf(&msgToSend[ind], sizeof(msgToSend) - ind, "%d|%d|%d", 
+                           idSensorToChange, paramIdToChange[i], parametersToChange[i]);
+    if (written > 0 && ind + written < (int)sizeof(msgToSend)) {
+      ind += written;
+    }
+    // Add separator if not the last item
+    if (i < paramIdToChange.size() - 1) {
+      if (ind < (int)sizeof(msgToSend) - 1) {
+        msgToSend[ind++] = '|';
+        msgToSend[ind] = '\0';
       }
     }
-    SendNotifyToClient(msgToSend, CHANGE_SENSOR_PARAM_REQ , pCharacteristic);
-    free(msgToSend);
   }
+  SendNotifyToClient(msgToSend, CHANGE_SENSOR_PARAM_REQ , pCharacteristic);
 }
 
 void SendMotorParamChangeReq(int idMotorToChange, std::vector<int> parametersToChange){
-  char* msgToSend=(char*)malloc(MAX_MSG_LEN);
+  char msgToSend[MAX_MSG_LEN];
   int ind = 0;
-  if (msgToSend!=NULL) {
-    for (size_t i=0; i<parametersToChange.size(); i++){
-      String motorID =String(idMotorToChange);
-      String parameter= String(parametersToChange[i]);
+  msgToSend[0] = '\0';
 
-      // Copy motor ID
-      strcpy(&msgToSend[ind], motorID.c_str());
-      ind += motorID.length();
-      // Separator
-      msgToSend[ind++] = '|';
-      // Copy parameter
-      strcpy(&msgToSend[ind], parameter.c_str());
-      ind += parameter.length();
-      // Add separator if not the last item
-      if (i < parametersToChange.size() - 1) {
-          msgToSend[ind++] = '|';
+  for (size_t i=0; i<parametersToChange.size(); i++){
+    int written = snprintf(&msgToSend[ind], sizeof(msgToSend) - ind, "%d|%d", 
+                           idMotorToChange, parametersToChange[i]);
+    if (written > 0 && ind + written < (int)sizeof(msgToSend)) {
+      ind += written;
+    }
+    // Add separator if not the last item
+    if (i < parametersToChange.size() - 1) {
+      if (ind < (int)sizeof(msgToSend) - 1) {
+        msgToSend[ind++] = '|';
+        msgToSend[ind] = '\0';
       }
     }
-    SendNotifyToClient(msgToSend, CHANGE_MOTOR_PARAM_REQ , pCharacteristic);
-    free(msgToSend);
   }
+  SendNotifyToClient(msgToSend, CHANGE_MOTOR_PARAM_REQ , pCharacteristic);
 }
 
 //delete debug screens objects
@@ -192,12 +178,12 @@ class ServerCallbacks : public NimBLEServerCallbacks {
 
 // Test function for debugging purposes only, handles return button
 void BLEReturnBTNtest(){
-  uint8_t* msg_bytes = strToByteMsg(0, "Testing return button");
+  struct msgInterpeterStruct msg_bytes;
+  strToByteMsg(&msg_bytes, 0, "Testing return button");
   uint16_t len = sizeof(struct msgInterpeterStruct);
-  // printMsg((struct msgInterpeterStruct*)msg_bytes);
-  pCharacteristic->setValue(msg_bytes, len);
+  // printMsg(&msg_bytes);
+  pCharacteristic->setValue((uint8_t*)&msg_bytes, len);
   pCharacteristic->notify();
-  free(msg_bytes);
 }
 
 // Callback for receiving confirmations from the client
@@ -211,40 +197,37 @@ class MyCallbacks: public NimBLECharacteristicCallbacks {
         printMsg(receivedDataStruct);
         notFinishUpdateSensors.clear();
         break;}
-      case EDIT_REQ:
+      case EDIT_REQ: {
           // Add handling for EDIT_REQ here
-          break;
-      case FUNC_REQ:
+          break;}
+      case FUNC_REQ: {
           // Add handling for FUNC_REQ here
-          break;
-      case READ_ANS:
-      {       
-        char* receivedMsg= (char*)malloc(MAX_MSG_LEN);
+          break;}
+      case READ_ANS: {
+        char receivedMsg[MAX_MSG_LEN];
         int isMotor;
         int hardwareId;
-        int hardwareValue;
-        if (receivedMsg){
-          strcpy(receivedMsg,receivedDataStruct->msg);
-          char* tokenedMsg ;
-          tokenedMsg=strtok(receivedMsg, "|");
-          int i=0;
-          while(tokenedMsg != NULL) {
-            if (i==0){
-              isMotor=atoi(tokenedMsg);
-              Serial.printf("received real time data answer for %s.\n",
-              isMotor==1 ? "motor" : "sensor");
+        int hardwareValue = 0;
+        strcpy(receivedMsg,receivedDataStruct->msg);
+        char* tokenedMsg ;
+        tokenedMsg=strtok(receivedMsg, "|");
+        int i=0;
+        while(tokenedMsg != NULL) {
+          if (i==0){
+            isMotor=atoi(tokenedMsg);
+            Serial.printf("received real time data answer for %s.\n",
+            isMotor==1 ? "motor" : "sensor");
+            i++;
+          } 
+          else if (i==1) {
+              hardwareId = atoi(tokenedMsg);
               i++;
-            } 
-            else if (i==1) {
-                hardwareId = atoi(tokenedMsg);
-                i++;
-            } else {
-              hardwareValue = atoi(tokenedMsg);
-              break;
-            }
-          tokenedMsg = strtok(NULL, "|");
+          } else {
+            hardwareValue = atoi(tokenedMsg);
+            break;
           }
-          if (receivedMsg) free(receivedMsg);
+        tokenedMsg = strtok(NULL, "|");
+        }
 
           lv_chart_set_next_value(chart, ser, hardwareValue); // Update chart
 
@@ -264,18 +247,14 @@ class MyCallbacks: public NimBLECharacteristicCallbacks {
           a[(s + 9) % p] = LV_CHART_POINT_NONE;
 
           lv_chart_refresh(chart);
-          }
-    
-
-          break;
-          }
-      case EDIT_ANS:
+          break;}
+      case EDIT_ANS: {
           // Add handling for EDIT_ANS here
-          break;
-      case FUNC_ANS:
+          break;}
+      case FUNC_ANS: {
           // Add handling for FUNC_ANS here
-          break;
-      case YML_SENSOR_ANS:
+          break;}
+      case YML_SENSOR_ANS: {
         //Check if the msg was received succesfully by comparing the msg length and checksum to the desired values 
         pointerToSensorBuff = &sensorsYamlBuffer;
         ReciveYAMLField(pointerToSensorBuff,*receivedDataStruct);
@@ -284,39 +263,39 @@ class MyCallbacks: public NimBLECharacteristicCallbacks {
           SendNotifyToClient("Please send Motors data", YML_MOTORS_REQ, pCharacteristic);
         }
 
-        break;
+        break;}
 
-      case YML_MOTORS_ANS:
+      case YML_MOTORS_ANS: {
         pointerToMotorsBuff = &motorsYamlBuffer;
         ReciveYAMLField(pointerToMotorsBuff,*receivedDataStruct);
         if (receivedDataStruct->curMsgCount == receivedDataStruct->totMsgCount) {
           isYmlMotorsReady = true;
           SendNotifyToClient( "Please send functions data", YML_FUNC_REQ, pCharacteristic );
         }
-        break;
+        break;}
 
-      case YML_FUNC_ANS:
+      case YML_FUNC_ANS: {
           pointerToFuncBuff = &funcsYamlBuffer;
           ReciveYAMLField(pointerToFuncBuff,*receivedDataStruct);
           if (receivedDataStruct->curMsgCount == receivedDataStruct->totMsgCount) {
             isYmlFunctionsReady = true;
             SendNotifyToClient( "Please send general data", YML_GENERAL_REQ, pCharacteristic );
           }
-          break;     
+          break;}   
 
-      case YML_GENERAL_ANS:
+      case YML_GENERAL_ANS: {
           pointerToGeneralBuff = &generalYamlBuffer;
           ReciveYAMLField(pointerToGeneralBuff,*receivedDataStruct);
           if (receivedDataStruct->curMsgCount == receivedDataStruct->totMsgCount) {
             isYmlGeneralReady = true;
           }
-          break;     
-      case YAML_ANS:
+          break;}     
+      case YAML_ANS: {
         
-        break;
-      case GEST_ANS:
+        break;}
+      case GEST_ANS: {
         canPlayGesture.test_and_set();
-        break;
+        break;}
 	  case CHANGE_MOTOR_PARAM_ANS:
 	    {
       printMsg(receivedDataStruct);
@@ -336,11 +315,13 @@ class MyCallbacks: public NimBLECharacteristicCallbacks {
   }
 };
 
-void sendingGesture(char* gestureName) {
-  uint8_t* byteMsg = strToByteMsg(GEST_REQ, gestureName);
-  // printByteArray(MSG_SIZE,byteMsg);
+
+void sendingGesture(const char* gestureName) {
+  struct msgInterpeterStruct byteMsg;
+  strToByteMsg(&byteMsg, GEST_REQ, gestureName);
+  // printByteArray(MSG_SIZE, (uint8_t*)&byteMsg);
   uint16_t len = MSG_SIZE; 
-  pCharacteristic->setValue(byteMsg, len);
+  pCharacteristic->setValue((uint8_t*)&byteMsg, len);
   pCharacteristic->notify();
 }
 

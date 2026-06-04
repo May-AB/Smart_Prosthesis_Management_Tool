@@ -16,6 +16,6 @@ void SendSensorParamChangeReq(
 void SendMotorParamChangeReq(int idMotorToChange, std::vector<int> parametersToChange);
 void deleteDebug();
 void BLEReturnBTNtest();
-void sendingGesture(char* gestureName);
+void sendingGesture(const char* gestureName);
 void StartBLEServer(void* params);
 #endif //BLE_NIMBLE_SERVER_H

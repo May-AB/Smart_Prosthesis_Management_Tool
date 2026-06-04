@@ -11,7 +11,7 @@
 
 class NimBLERemoteCharacteristic;
 
-void SendNotifyToServer(char* msgStr, int msgTypeEnum, NimBLERemoteCharacteristic* pRemoteCharacteristic);
-void SimulateGestureRun(char* msgStr, NimBLERemoteCharacteristic* pRemoteCharacteristic);
+void SendNotifyToServer(const char* msgStr, int msgTypeEnum, NimBLERemoteCharacteristic* pRemoteCharacteristic);
+void SimulateGestureRun(const char* msgStr, NimBLERemoteCharacteristic* pRemoteCharacteristic);
 
 #endif //REQUESTS_H

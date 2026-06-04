@@ -11,14 +11,8 @@ uint8_t calculateChecksum(const char* data, size_t length) {
     return checksum;
 }
 
-uint8_t* strToByteMsg(int reqType, char* msgStr, int msgNum, int totalMsgNum) {
-  size_t structSize = sizeof(struct msgInterpeterStruct);
-  uint8_t* byteMsg = (uint8_t*)malloc(structSize);
-  if (byteMsg == NULL) {
-      perror("Failed to allocate memory for MSG");
-      return NULL;
-  }
-  struct msgInterpeterStruct *msgBuff = (struct msgInterpeterStruct *) byteMsg;
+void strToByteMsg(struct msgInterpeterStruct* msgBuff, int reqType, const char* msgStr, int msgNum, int totalMsgNum) {
+  if (msgBuff == nullptr) return;
   msgBuff->curMsgCount = msgNum;  
   msgBuff->totMsgCount = totalMsgNum;  
   msgBuff->reqType = reqType;
@@ -30,8 +24,6 @@ uint8_t* strToByteMsg(int reqType, char* msgStr, int msgNum, int totalMsgNum) {
   uint8_t checksumResult = calculateChecksum(msgBuff->msg, currentChunkSize);
   msgBuff->checksum= checksumResult;
   msgBuff->msgLength = currentChunkSize;
-  // Copy the struct contents to the byte array
-  return byteMsg;
 }
 
 void printByteArray(size_t length, const uint8_t* pData){

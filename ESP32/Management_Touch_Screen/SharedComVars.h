@@ -33,7 +33,7 @@ struct msgInterpeterStruct{
 };
 
 uint8_t calculateChecksum(const char* data, size_t length);
-uint8_t* strToByteMsg(int reqType, char* msgStr, int msgNum = 1, int totalMsgNum = 1);
+void strToByteMsg(struct msgInterpeterStruct* msgBuff, int reqType, const char* msgStr, int msgNum = 1, int totalMsgNum = 1);
 void printByteArray(size_t length, const uint8_t* pData);
 void printMsg(struct msgInterpeterStruct* msg);
 #endif //SHARED_COM_VALS_H

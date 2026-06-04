@@ -14,8 +14,8 @@ extern bool isYmlFunctionsReady;
 
 class NimBLECharacteristic;
 
-void SendNotifyToClient(char* msgStr, int msgTypeEnum, NimBLECharacteristic *pCharacteristic);
-void SendEmergencyReq(char* msgStr, int msgTypeEnum, NimBLECharacteristic *pCharacteristic);
+void SendNotifyToClient(const char* msgStr, int msgTypeEnum, NimBLECharacteristic *pCharacteristic);
+void SendEmergencyReq(const char* msgStr, int msgTypeEnum, NimBLECharacteristic *pCharacteristic);
 bool isMsgCorrupted(struct msgInterpeterStruct* structVal);
 void ReciveYAMLField(uint8_t** bufferToUse, struct msgInterpeterStruct structVal);
 

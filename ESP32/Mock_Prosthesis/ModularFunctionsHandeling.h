@@ -17,7 +17,7 @@ void rest();
 
 // Simulating sensor state
 void ChangeSensorState(int currentSensorId, const char* sensorStatus);
-int GetRealTimeData(int isMotor, int hardwareId);
+int SampleMotorsAndSensors(int isMotor, int hardwareId);
 void ChangeSensorStateWrapper();
 
 // Function caller

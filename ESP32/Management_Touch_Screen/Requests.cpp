@@ -9,31 +9,31 @@ bool isYmlSensorsReady = false;
 bool isYmlMotorsReady = false;
 bool isYmlFunctionsReady = false;
 
-void SendNotifyToClient(char* msgStr, int msgTypeEnum, NimBLECharacteristic *pCharacteristic){
+void SendNotifyToClient(const char* msgStr, int msgTypeEnum, NimBLECharacteristic *pCharacteristic){
   int totalMsgNum = ceil(((float)strlen(msgStr))/((float)(MAX_MSG_LEN-1)));
   if (totalMsgNum>1){Serial.println("The message is too long, dividing into multiple sends");}
   for (int msgNum=1;msgNum<=totalMsgNum;msgNum++){
-    uint8_t* msgBytes = strToByteMsg(msgTypeEnum, msgStr, msgNum, totalMsgNum);
+    struct msgInterpeterStruct msgBytes;
+    strToByteMsg(&msgBytes, msgTypeEnum, msgStr, msgNum, totalMsgNum);
     uint16_t len = sizeof(struct msgInterpeterStruct);
     Serial.print("Sending msg:");
-    printMsg((struct msgInterpeterStruct*)msgBytes);
-    pCharacteristic->setValue(msgBytes, len);
+    printMsg(&msgBytes);
+    pCharacteristic->setValue((uint8_t*)&msgBytes, len);
     pCharacteristic->notify();
       // TODO IN THE FUTURE - think if there is an possible error handling here. 
-    free(msgBytes);
   }
 }
 
 // BOOT BUTTON
-void SendEmergencyReq(char* msgStr, int msgTypeEnum, NimBLECharacteristic *pCharacteristic){
-    uint8_t* msgBytes = strToByteMsg(msgTypeEnum, msgStr, 1, 1);
+void SendEmergencyReq(const char* msgStr, int msgTypeEnum, NimBLECharacteristic *pCharacteristic){
+    struct msgInterpeterStruct msgBytes;
+    strToByteMsg(&msgBytes, msgTypeEnum, msgStr, 1, 1);
     Serial.print("Sending msg:");
-    printMsg((struct msgInterpeterStruct*)msgBytes);
-    pCharacteristic->setValue(msgBytes, sizeof(struct msgInterpeterStruct));
+    printMsg(&msgBytes);
+    pCharacteristic->setValue((uint8_t*)&msgBytes, sizeof(struct msgInterpeterStruct));
     Serial.println("Notify to client");
     pCharacteristic->notify();
       // TODO IN THE FUTURE - think if there is an possible error handling here. 
-    free(msgBytes);
     vTaskDelay(1000 / portTICK_PERIOD_MS);  // Avoid spamming notifications
 }
 

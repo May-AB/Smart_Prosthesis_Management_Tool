@@ -104,3 +104,5 @@ QueueHandle_t buttonQueue = nullptr;
 TaskHandle_t bleNotifyTaskHandle = nullptr;
 
 NimBLEServer *pServer = nullptr;
+
+char selectedTextToTitle[32] = "";

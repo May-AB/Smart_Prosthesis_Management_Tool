@@ -77,10 +77,9 @@ class ScanCallbacks : public NimBLEScanCallbacks {
 void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
     std::string str  = (isNotify == true) ? "Notification" : "Indication";
     Serial.println("received request");
-    struct msgInterpeterStruct* receivedData = (struct msgInterpeterStruct*)malloc(sizeof(struct msgInterpeterStruct));
-    *receivedData = *((struct msgInterpeterStruct*)pData);
+    struct msgInterpeterStruct receivedDataVal = *((struct msgInterpeterStruct*)pData);
+    struct msgInterpeterStruct* receivedData = &receivedDataVal;
     printMsg(receivedData);
-    char* receivedMsg;
     switch (receivedData->reqType) {
       case EMERGENCY_STOP:
         Serial.println("Recived emergency stop request");
@@ -93,38 +92,61 @@ void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData,
     
     case YAML_REQ:
       Serial.println("Recivied yaml request, sending sensors data");
-      char* sensorsSplitedField2;
-      splitYaml(readYAML().c_str(), NULL, &sensorsSplitedField2, NULL, NULL);
-      // Sending sensors data
-      SendNotifyToServer(sensorsSplitedField2, YML_SENSOR_ANS, pRemoteCharacteristic);
+      {
+        char* sensorsSplitedField2 = nullptr;
+        splitYaml(readYAML().c_str(), NULL, &sensorsSplitedField2, NULL, NULL);
+        if (sensorsSplitedField2) {
+          SendNotifyToServer(sensorsSplitedField2, YML_SENSOR_ANS, pRemoteCharacteristic);
+          free(sensorsSplitedField2);
+        }
+      }
       break;
 
     case YML_MOTORS_REQ:
       // Sending motors data
-      char* motorsSplitedField2;
-      splitYaml(readYAML().c_str(), NULL, NULL, &motorsSplitedField2, NULL);
-      SendNotifyToServer(motorsSplitedField2, YML_MOTORS_ANS, pRemoteCharacteristic);
+      {
+        char* motorsSplitedField2 = nullptr;
+        splitYaml(readYAML().c_str(), NULL, NULL, &motorsSplitedField2, NULL);
+        if (motorsSplitedField2) {
+          SendNotifyToServer(motorsSplitedField2, YML_MOTORS_ANS, pRemoteCharacteristic);
+          free(motorsSplitedField2);
+        }
+      }
       break;
 
     case YML_FUNC_REQ:
       // Sending functions data
-      char* functionsSplitedField2;
-      splitYaml(readYAML().c_str(), NULL, NULL, NULL, &functionsSplitedField2);
-      SendNotifyToServer(functionsSplitedField2, YML_FUNC_ANS, pRemoteCharacteristic);
+      {
+        char* functionsSplitedField2 = nullptr;
+        splitYaml(readYAML().c_str(), NULL, NULL, NULL, &functionsSplitedField2);
+        if (functionsSplitedField2) {
+          SendNotifyToServer(functionsSplitedField2, YML_FUNC_ANS, pRemoteCharacteristic);
+          free(functionsSplitedField2);
+        }
+      }
       break;
 
     case YML_GENERAL_REQ:
       // Sending general data
-      char* generalSplitedField2;
-      splitYaml(readYAML().c_str(), &generalSplitedField2, NULL, NULL, NULL);
-      SendNotifyToServer(generalSplitedField2, YML_GENERAL_ANS, pRemoteCharacteristic);
-      Serial.println("Finished sending yaml data");
+      {
+        char* generalSplitedField2 = nullptr;
+        splitYaml(readYAML().c_str(), &generalSplitedField2, NULL, NULL, NULL);
+        if (generalSplitedField2) {
+          SendNotifyToServer(generalSplitedField2, YML_GENERAL_ANS, pRemoteCharacteristic);
+          free(generalSplitedField2);
+        }
+        Serial.println("Finished sending yaml data");
+      }
       break;
 
     case CHANGE_SENSOR_STATE_REQ:
       // Handling requests to change sensor status on <=> off
-      receivedMsg = (char*)malloc(MAX_MSG_LEN * (receivedData->totMsgCount));
-      if (receivedMsg != NULL) {
+      {
+        char receivedMsg[MAX_MSG_LEN * 4];
+        if (receivedData->totMsgCount > 4) {
+          Serial.println("Error: totMsgCount exceeds stack buffer capacity");
+          break;
+        }
         strcpy(receivedMsg, receivedData->msg);
         char* tokenedMsg;
         tokenedMsg = strtok(receivedMsg, "|");
@@ -133,9 +155,10 @@ void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData,
           if (i == 2 || i == 0) {
             i = 0;
             currentSensorId = atoi(tokenedMsg);
-            Serial.printf("New sensor ID is %d, status is %s.\n", currentSensorId, sensors[currentSensorId].name.c_str());
+            Serial.printf("New sensor ID is %d, sensor name is %s\n", currentSensorId, sensors[currentSensorId].name.c_str());
           } else {
             sensorStatus = tokenedMsg;
+            //Serial.printf("new state is %s.\n", sensorStatus);
             callFunction("ChangeSensorState");
           }
           tokenedMsg = strtok(NULL, "|");
@@ -143,13 +166,16 @@ void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData,
         }
 
         SendNotifyToServer(receivedData->msg, CHANGE_SENSOR_STATE_ANS, pRemoteCharacteristic);
-        free(receivedMsg);
       }
       break;
 
     case CHANGE_SENSOR_PARAM_REQ:
-      receivedMsg = (char*)malloc(MAX_MSG_LEN * receivedData->totMsgCount);
-      if (receivedMsg) {
+      {
+        char receivedMsg[MAX_MSG_LEN * 4];
+        if (receivedData->totMsgCount > 4) {
+          Serial.println("Error: totMsgCount exceeds stack buffer capacity");
+          break;
+        }
         strcpy(receivedMsg, receivedData->msg);
         char* tokenedMsg;
         tokenedMsg = strtok(receivedMsg, "|");
@@ -187,14 +213,17 @@ void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData,
           i++;
         }
         SendNotifyToServer(receivedData->msg, CHANGE_SENSOR_PARAM_ANS, pRemoteCharacteristic);
-        if (receivedMsg) { free(receivedMsg); }
       }
       break;
     
     case CHANGE_MOTOR_PARAM_REQ:
-      receivedMsg = (char*)malloc(MAX_MSG_LEN * receivedData->totMsgCount);
-      int currentMotorId;
-      if (receivedMsg){
+      {
+        char receivedMsg[MAX_MSG_LEN * 4];
+        if (receivedData->totMsgCount > 4) {
+          Serial.println("Error: totMsgCount exceeds stack buffer capacity");
+          break;
+        }
+        int currentMotorId;
         strcpy(receivedMsg, receivedData->msg);
         char* tokenedMsg ;
         tokenedMsg=strtok(receivedMsg, "|");
@@ -225,50 +254,45 @@ void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData,
           tokenedMsg = strtok(NULL, "|");
           i++;
         }
+        SendNotifyToServer(receivedData->msg, CHANGE_MOTOR_PARAM_ANS, pRemoteCharacteristic);
       }
-      SendNotifyToServer(receivedData->msg, CHANGE_MOTOR_PARAM_ANS, pRemoteCharacteristic);
-      if (receivedMsg){free(receivedMsg);}
       break;
 
     case READ_REQ:{
-      char* receivedMsg= (char*)malloc(MAX_MSG_LEN);
+      char receivedMsg[MAX_MSG_LEN];
       int isMotor;
       int hardwareId;
-      if (receivedMsg){
-        strcpy(receivedMsg,receivedData->msg);
-        char* tokenedMsg ;
-        tokenedMsg=strtok(receivedMsg, "|");
-        int i=0;
-        while(tokenedMsg != NULL) {
-          if (i==0){
-            isMotor=atoi(tokenedMsg);
-            Serial.printf("received real time data request for %s.\n",
-            isMotor==1 ? "motor" : "sensor");
-            i++;
-          } 
-          else {
-            hardwareId = atoi(tokenedMsg);
-            break;
-          }
-          tokenedMsg = strtok(NULL, "|");
+      strcpy(receivedMsg,receivedData->msg);
+      char* tokenedMsg ;
+      tokenedMsg=strtok(receivedMsg, "|");
+      int i=0;
+      while(tokenedMsg != NULL) {
+        if (i==0){
+          isMotor=atoi(tokenedMsg);
+          Serial.printf("received real time data request for %s.\n",
+          isMotor==1 ? "motor" : "sensor");
+          i++;
+        } 
+        else {
+          hardwareId = atoi(tokenedMsg);
+          break;
         }
-        int sampledData=GetRealTimeData(isMotor, hardwareId);
-        String sampledDataStr = String(sampledData);
-        Serial.printf("sampled data str %s. msg length %d \n",sampledDataStr.c_str(),receivedData->msgLength);
-        strcpy(receivedMsg,receivedData->msg);
-        strcpy(&(receivedMsg[receivedData->msgLength]),"|");
-        strcpy(&(receivedMsg[receivedData->msgLength+1]),sampledDataStr.c_str());
-        SendNotifyToServer(receivedMsg, READ_ANS, pRemoteCharacteristic); // Send response
-        Serial.printf("msg: %s\n",receivedMsg);
-        if (receivedMsg){free(receivedMsg);}
-      }   
+        tokenedMsg = strtok(NULL, "|");
+      }
+      int sampledData=SampleMotorsAndSensors(isMotor, hardwareId);
+      String sampledDataStr = String(sampledData);
+      Serial.printf("sampled data str %s. msg length %d \n",sampledDataStr.c_str(),receivedData->msgLength);
+      strcpy(receivedMsg,receivedData->msg);
+      strcpy(&(receivedMsg[receivedData->msgLength]),"|");
+      strcpy(&(receivedMsg[receivedData->msgLength+1]),sampledDataStr.c_str());
+      SendNotifyToServer(receivedMsg, READ_ANS, pRemoteCharacteristic); // Send response
+      Serial.printf("msg: %s\n",receivedMsg);
       break;}
 
     default:
         Serial.println("unrecognized response");
         break;
-  } 
-  free(receivedData);
+    } 
 }
 
 
