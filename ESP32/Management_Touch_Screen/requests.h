@@ -3,12 +3,25 @@
 
 #include <SharedComVars.h>
 #include <SharedYamlParser.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 
-// Initialize YAML flags
-extern bool isYmlGeneralReady;
-extern bool isYmlSensorsReady;
-extern bool isYmlMotorsReady;
-extern bool isYmlFunctionsReady;
+// Queue used by the BLE core to hand assembled YAML section buffers to the
+// LVGL core for parsing. BLE core allocates + enqueues; LVGL core dequeues,
+enum class YamlSection : uint8_t { SENSORS, MOTORS, FUNCTIONS, GENERAL };
+struct YamlSectionMsg {
+  YamlSection section; // which section this buffer belongs to
+  uint8_t *buf;        // heap-allocated buffer (BLE calloc'd, LVGL frees)
+};
+extern QueueHandle_t yamlSectionQueue;
+
+// Queue used by the LVGL core to post outgoing BLE notifications to the BLE
+// core.
+struct BLENotifyMsg {
+  char msg[MAX_MSG_LEN];
+  int msgTypeEnum;
+};
+extern QueueHandle_t bleNotifySendQueue;
 
 class NimBLECharacteristic;
 

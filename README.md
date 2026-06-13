@@ -2,7 +2,7 @@
 
 This is a personal fork of a project that began as a team university project in cooperation with Haifa3D, a non-profit organisation that develops personalized low-cost prosthesis.
 
-### Developed By:
+### Origianl fork developed By:
 **Avigail Yampolsky, Elisheva Hammer, and May Abraham**
 
 ---

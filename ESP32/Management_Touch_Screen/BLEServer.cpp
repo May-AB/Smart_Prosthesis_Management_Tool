@@ -53,7 +53,12 @@ void SendStatusChangeReq(std::vector<int> sensorsToOn,
       }
     }
   }
-  SendNotifyToClient(msgToSend, CHANGE_SENSOR_STATE_REQ, pCharacteristic);
+  // Post to queue — executes SendNotifyToClient on the BLE core (Core 0)
+  BLENotifyMsg bleMsg;
+  strncpy(bleMsg.msg, msgToSend, MAX_MSG_LEN - 1);
+  bleMsg.msg[MAX_MSG_LEN - 1] = '\0';
+  bleMsg.msgTypeEnum = CHANGE_SENSOR_STATE_REQ;
+  xQueueSend(bleNotifySendQueue, &bleMsg, 0);
 }
 
 void SendSensorParamChangeReq(int idSensorToChange,
@@ -78,7 +83,11 @@ void SendSensorParamChangeReq(int idSensorToChange,
       }
     }
   }
-  SendNotifyToClient(msgToSend, CHANGE_SENSOR_PARAM_REQ, pCharacteristic);
+  BLENotifyMsg bleMsg;
+  strncpy(bleMsg.msg, msgToSend, MAX_MSG_LEN - 1);
+  bleMsg.msg[MAX_MSG_LEN - 1] = '\0';
+  bleMsg.msgTypeEnum = CHANGE_SENSOR_PARAM_REQ;
+  xQueueSend(bleNotifySendQueue, &bleMsg, 0);
 }
 
 void SendMotorParamChangeReq(int idMotorToChange,
@@ -101,7 +110,36 @@ void SendMotorParamChangeReq(int idMotorToChange,
       }
     }
   }
-  SendNotifyToClient(msgToSend, CHANGE_MOTOR_PARAM_REQ, pCharacteristic);
+  BLENotifyMsg bleMsg;
+  strncpy(bleMsg.msg, msgToSend, MAX_MSG_LEN - 1);
+  bleMsg.msg[MAX_MSG_LEN - 1] = '\0';
+  bleMsg.msgTypeEnum = CHANGE_MOTOR_PARAM_REQ;
+  xQueueSend(bleNotifySendQueue, &bleMsg, 0);
+}
+
+// File-scope temporary buffers for incoming YAML chunks
+static uint8_t *sensorsTempBuf = nullptr;
+static uint8_t *motorsTempBuf = nullptr;
+static uint8_t *funcsTempBuf = nullptr;
+static uint8_t *generalTempBuf = nullptr;
+
+static void cleanupTempYamlBuffers() {
+  if (sensorsTempBuf) {
+    free(sensorsTempBuf);
+    sensorsTempBuf = nullptr;
+  }
+  if (motorsTempBuf) {
+    free(motorsTempBuf);
+    motorsTempBuf = nullptr;
+  }
+  if (funcsTempBuf) {
+    free(funcsTempBuf);
+    funcsTempBuf = nullptr;
+  }
+  if (generalTempBuf) {
+    free(generalTempBuf);
+    generalTempBuf = nullptr;
+  }
 }
 
 // Class to handle events on connection and discconection from client
@@ -120,6 +158,7 @@ class ServerCallbacks : public NimBLEServerCallbacks {
   void onDisconnect(BLEServer *pServer, NimBLEConnInfo &connInfo,
                     int reason) override {
     Serial.println("Client disconnected! Advertsing again");
+    cleanupTempYamlBuffers();
     hasClient.clear();
     if (debugTab) {
       // Schedule deleteDebug() on the LVGL (UI) core — safe cross-core call
@@ -168,11 +207,11 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
       break;
     }
     case EDIT_REQ: {
-      // Add handling for EDIT_REQ here
+      // Add handling for EDIT_REQ later
       break;
     }
     case FUNC_REQ: {
-      // Add handling for FUNC_REQ here
+      // Add handling for FUNC_REQ later
       break;
     }
     case READ_ANS: {
@@ -205,32 +244,33 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
       break;
     }
     case EDIT_ANS: {
-      // Add handling for EDIT_ANS here
+      // Add handling for EDIT_ANS later
       break;
     }
     case FUNC_ANS: {
-      // Add handling for FUNC_ANS here
+      // Add handling for FUNC_ANS later
       break;
     }
     case YML_SENSOR_ANS: {
-      // Check if the msg was received succesfully by comparing the msg length
+      // Check if the msg was received successfully by comparing the msg length
       // and checksum to the desired values
-      pointerToSensorBuff = &sensorsYamlBuffer;
-      ReciveYAMLField(pointerToSensorBuff, *receivedDataStruct);
+      ReciveYAMLField(&sensorsTempBuf, *receivedDataStruct);
       if (receivedDataStruct->curMsgCount == receivedDataStruct->totMsgCount) {
-        isYmlSensorsReady = true;
+        YamlSectionMsg sensorMsgSection{YamlSection::SENSORS, sensorsTempBuf};
+        xQueueSend(yamlSectionQueue, &sensorMsgSection, portMAX_DELAY);
+        sensorsTempBuf = nullptr;
         SendNotifyToClient("Please send Motors data", YML_MOTORS_REQ,
                            pCharacteristic);
       }
-
       break;
     }
 
     case YML_MOTORS_ANS: {
-      pointerToMotorsBuff = &motorsYamlBuffer;
-      ReciveYAMLField(pointerToMotorsBuff, *receivedDataStruct);
+      ReciveYAMLField(&motorsTempBuf, *receivedDataStruct);
       if (receivedDataStruct->curMsgCount == receivedDataStruct->totMsgCount) {
-        isYmlMotorsReady = true;
+        YamlSectionMsg motorsMsgSection{YamlSection::MOTORS, motorsTempBuf};
+        xQueueSend(yamlSectionQueue, &motorsMsgSection, portMAX_DELAY);
+        motorsTempBuf = nullptr;
         SendNotifyToClient("Please send functions data", YML_FUNC_REQ,
                            pCharacteristic);
       }
@@ -238,10 +278,12 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
     }
 
     case YML_FUNC_ANS: {
-      pointerToFuncBuff = &funcsYamlBuffer;
-      ReciveYAMLField(pointerToFuncBuff, *receivedDataStruct);
+      ReciveYAMLField(&funcsTempBuf, *receivedDataStruct);
       if (receivedDataStruct->curMsgCount == receivedDataStruct->totMsgCount) {
-        isYmlFunctionsReady = true;
+        YamlSectionMsg functionsMsgSection{YamlSection::FUNCTIONS,
+                                           funcsTempBuf};
+        xQueueSend(yamlSectionQueue, &functionsMsgSection, portMAX_DELAY);
+        funcsTempBuf = nullptr;
         SendNotifyToClient("Please send general data", YML_GENERAL_REQ,
                            pCharacteristic);
       }
@@ -249,10 +291,11 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
     }
 
     case YML_GENERAL_ANS: {
-      pointerToGeneralBuff = &generalYamlBuffer;
-      ReciveYAMLField(pointerToGeneralBuff, *receivedDataStruct);
+      ReciveYAMLField(&generalTempBuf, *receivedDataStruct);
       if (receivedDataStruct->curMsgCount == receivedDataStruct->totMsgCount) {
-        isYmlGeneralReady = true;
+        YamlSectionMsg generalMsgSection{YamlSection::GENERAL, generalTempBuf};
+        xQueueSend(yamlSectionQueue, &generalMsgSection, portMAX_DELAY);
+        generalTempBuf = nullptr;
       }
       break;
     }
@@ -281,16 +324,22 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
   }
 };
 
+// Called from the LVGL core (gesture button press) — posts to the BLE queue
+// so pCharacteristic->notify() runs on the BLE core (Core 0).
 void sendingGesture(const char *gestureName) {
-  struct msgInterpeterStruct byteMsg;
-  strToByteMsg(&byteMsg, GEST_REQ, gestureName);
-  // printByteArray(MSG_SIZE, (uint8_t*)&byteMsg);
-  uint16_t len = MSG_SIZE;
-  pCharacteristic->setValue((uint8_t *)&byteMsg, len);
-  pCharacteristic->notify();
+  BLENotifyMsg bleMsg;
+  strncpy(bleMsg.msg, gestureName, MAX_MSG_LEN - 1);
+  bleMsg.msg[MAX_MSG_LEN - 1] = '\0';
+  bleMsg.msgTypeEnum = GEST_REQ;
+  xQueueSend(bleNotifySendQueue, &bleMsg, 0);
 }
 
 void StartBLEServer(void *params) {
+  // Create the LVGL→BLE outgoing notification queue
+  bleNotifySendQueue = xQueueCreate(4, sizeof(BLENotifyMsg));
+  // Create the BLE→LVGL YAML section queue
+  yamlSectionQueue = xQueueCreate(4, sizeof(YamlSectionMsg));
+
   NimBLEDevice::init("");
   pServer = NimBLEDevice::createServer();
   NimBLEService *pService = pServer->createService(SERVICE_UUID);
@@ -308,8 +357,15 @@ void StartBLEServer(void *params) {
   pAdvertising->start();
 
   Serial.println("Server is advertising");
-  while (1) {
 
-    delay(2000);
+  // Drain the outgoing-notification queue on the BLE core.
+  // This is the symmetric counterpart to lv_async_call for the BLE→LVGL
+  // direction — LVGL core posts here, BLE core sends the actual notify().
+  BLENotifyMsg outMsg;
+  while (1) {
+    if (xQueueReceive(bleNotifySendQueue, &outMsg, pdMS_TO_TICKS(2000)) ==
+        pdTRUE) {
+      SendNotifyToClient(outMsg.msg, outMsg.msgTypeEnum, pCharacteristic);
+    }
   }
 }

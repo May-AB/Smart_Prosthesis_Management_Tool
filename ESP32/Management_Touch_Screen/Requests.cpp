@@ -3,12 +3,6 @@
 #include <NimBLEDevice.h>
 #include <SharedComVars.h>
 
-// Define YAML flags
-bool isYmlGeneralReady = false;
-bool isYmlSensorsReady = false;
-bool isYmlMotorsReady = false;
-bool isYmlFunctionsReady = false;
-
 void SendNotifyToClient(const char *msgStr, int msgTypeEnum,
                         NimBLECharacteristic *pCharacteristic) {
   int totalMsgNum = ceil(((float)strlen(msgStr)) / ((float)(MAX_MSG_LEN - 1)));

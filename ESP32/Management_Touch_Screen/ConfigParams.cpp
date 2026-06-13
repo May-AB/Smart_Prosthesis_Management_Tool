@@ -84,6 +84,9 @@ lv_obj_t *TabviewObjDebugMode = nullptr;
 lv_obj_t *debugLabel = nullptr;
 
 QueueHandle_t buttonQueue = nullptr;
+QueueHandle_t bleNotifySendQueue =
+    nullptr; // LVGL→BLE outgoing notification queue
+QueueHandle_t yamlSectionQueue = nullptr; // BLE→LVGL YAML section queue
 TaskHandle_t bleNotifyTaskHandle = nullptr;
 
 NimBLEServer *pServer = nullptr;

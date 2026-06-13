@@ -1,6 +1,7 @@
 #include "UIDebugMode.h"
 #include "BLEServer.h"
 #include "ConfigParams.h"
+#include "Requests.h"
 #include "UIShared.h"
 #include <Arduino.h>
 #include <SharedYamlParser.h>
@@ -12,20 +13,23 @@ static char selectedTextToTitle[32] = "";
 
 static int getSensorValue() { return lv_rand(10, 90); }
 
+// Runs on the LVGL core (Core 1) — posts the READ_REQ to the BLE core's queue
 static void updateChartReq(lv_timer_t *t) {
   int *arr = static_cast<int *>(t->user_data);
-  char msgToSend[MAX_MSG_LEN];
+  BLENotifyMsg msg;
   String isMotorStr = String(arr[0]);
   String hardwareIdStr = String(arr[1]);
-  int totalLen = (int)isMotorStr.length() + 1 + (int)hardwareIdStr.length();
   int ind = 0;
-  memcpy(&msgToSend[ind], isMotorStr.c_str(), isMotorStr.length());
+  memcpy(&msg.msg[ind], isMotorStr.c_str(), isMotorStr.length());
   ind += isMotorStr.length();
-  msgToSend[ind++] = '|';
-  memcpy(&msgToSend[ind], hardwareIdStr.c_str(), hardwareIdStr.length());
+  msg.msg[ind++] = '|';
+  memcpy(&msg.msg[ind], hardwareIdStr.c_str(), hardwareIdStr.length());
   ind += hardwareIdStr.length();
-  msgToSend[ind] = '\0';
-  SendNotifyToClient(msgToSend, READ_REQ, pCharacteristic);
+  msg.msg[ind] = '\0';
+  msg.msgTypeEnum = READ_REQ;
+  // Non-blocking post — if the queue is full the request is simply skipped
+  // (chart will try again on the next 200 ms tick).
+  xQueueSend(bleNotifySendQueue, &msg, 0);
 }
 
 static void updateChart(lv_timer_t *t) {

@@ -125,7 +125,9 @@ extern lv_obj_t *dropdownSensorsObj;
 extern lv_obj_t *TabviewObjDebugMode;
 extern lv_obj_t *debugLabel;
 
-extern QueueHandle_t buttonQueue; // Global queue handle
+extern QueueHandle_t buttonQueue;        // Boot-button queue
+extern QueueHandle_t bleNotifySendQueue; // LVGL→BLE outgoing notification queue
+extern QueueHandle_t yamlSectionQueue;   // BLE→LVGL YAML section queue
 extern TaskHandle_t bleNotifyTaskHandle;
 
 // UUIDs for the service and characteristics

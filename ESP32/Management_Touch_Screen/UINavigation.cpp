@@ -5,7 +5,6 @@
 #include <lvgl.h>
 #include <vector>
 
-
 #include "BLEServer.h"
 #include "ConfigParams.h"
 #include "Touch.h"
@@ -15,7 +14,6 @@
 #include "UITechMode.h"
 #include "UIUserMode.h"
 #include <SharedYamlParser.h>
-
 
 // ---------- UINavigation-owned state (not global) ----------
 static int techPass = 0;
@@ -426,54 +424,43 @@ static void yamlPollTimerCb(lv_timer_t *timer) {
     hasClient.clear();
     lv_timer_del(timer);
     s_yamlPollTimer = nullptr;
-    if (sensorsYamlBuffer) {
-      free(sensorsYamlBuffer);
-      sensorsYamlBuffer = nullptr;
-    }
-    if (motorsYamlBuffer) {
-      free(motorsYamlBuffer);
-      motorsYamlBuffer = nullptr;
-    }
-    if (funcsYamlBuffer) {
-      free(funcsYamlBuffer);
-      funcsYamlBuffer = nullptr;
-    }
-    if (generalYamlBuffer) {
-      free(generalYamlBuffer);
-      generalYamlBuffer = nullptr;
+    // Drain and free any buffers remaining in the queue to prevent leaks
+    YamlSectionMsg msg;
+    while (xQueueReceive(yamlSectionQueue, &msg, 0) == pdTRUE) {
+      if (msg.buf) {
+        free(msg.buf);
+      }
     }
     return;
   }
-  // Parse each YAML section as it becomes ready
-  if (isYmlSensorsReady) {
-    sensors.clear();
-    splitSensorsField((char *)*pointerToSensorBuff);
-    isYmlSensorsReady = false;
-    free(*pointerToSensorBuff);
-    *pointerToSensorBuff = nullptr;
+
+  // Drain all sections that have arrived since last tick
+  YamlSectionMsg msg;
+  while (xQueueReceive(yamlSectionQueue, &msg, 0) == pdTRUE) {
+    switch (msg.section) {
+    case YamlSection::SENSORS:
+      sensors.clear();
+      splitSensorsField((char *)msg.buf);
+      break;
+    case YamlSection::MOTORS:
+      motors.clear();
+      splitMotorsField((char *)msg.buf);
+      break;
+    case YamlSection::FUNCTIONS:
+      functions.clear();
+      splitFunctionsField((char *)msg.buf);
+      break;
+    case YamlSection::GENERAL:
+      generalEntries.clear();
+      splitGeneralField((char *)msg.buf);
+      yamlStructsReady = true;
+      break;
+    }
+    if (msg.buf) {
+      free(msg.buf); // LVGL core frees after parsing
+    }
   }
-  if (isYmlMotorsReady) {
-    motors.clear();
-    splitMotorsField((char *)*pointerToMotorsBuff);
-    isYmlMotorsReady = false;
-    free(*pointerToMotorsBuff);
-    *pointerToMotorsBuff = nullptr;
-  }
-  if (isYmlFunctionsReady) {
-    functions.clear();
-    splitFunctionsField((char *)*pointerToFuncBuff);
-    isYmlFunctionsReady = false;
-    free(*pointerToFuncBuff);
-    *pointerToFuncBuff = nullptr;
-  }
-  if (isYmlGeneralReady) {
-    generalEntries.clear();
-    splitGeneralField((char *)*pointerToGeneralBuff);
-    isYmlGeneralReady = false;
-    free(*pointerToGeneralBuff);
-    *pointerToGeneralBuff = nullptr;
-    yamlStructsReady = true;
-  }
+
   // All YAML sections received — finalize and move to main UI
   if (yamlStructsReady) {
     yamlStructsReady = false;
@@ -490,7 +477,12 @@ static void yamlPollTimerCb(lv_timer_t *timer) {
 void loadYamlStep(lv_event_t *e) {
   if (hasClient.test_and_set()) {
     if (sendYamlRequest) {
-      SendNotifyToClient("Please send YAML data", YAML_REQ, pCharacteristic);
+      // LVGL core (Core 1) — post to BLE queue so notify() runs on Core 0
+      BLENotifyMsg bleMsg;
+      strncpy(bleMsg.msg, "Please send YAML data", MAX_MSG_LEN - 1);
+      bleMsg.msg[MAX_MSG_LEN - 1] = '\0';
+      bleMsg.msgTypeEnum = YAML_REQ;
+      xQueueSend(bleNotifySendQueue, &bleMsg, 0);
       Serial.println("Sent yaml request");
       sendYamlRequest = false;
     }
