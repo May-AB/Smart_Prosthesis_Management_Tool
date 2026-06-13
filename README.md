@@ -142,7 +142,7 @@ Additionally, when needed, each **motor, sensor, and parameter** is identified b
 - **ESP32**: Source code for the ESP32 firmware. Contains source code for managment tool and the mock prosthesis code. 
 - **Unit Tests**: Tests for individual hardware components (input/output devices).
 - **Parameters**: Contains descriptions of configurable parameters.
-- **Assets**: Contains resources such as yaml file and library configuration files.
+- **Assets**: Contains resources such as libraries, yaml file and lvgl configuration file.
 
 ---
 ## Firmware
@@ -169,14 +169,8 @@ This board includes the following features:
 - **TAMC_GT911** by TAMC - 1.0.2
 - **lvgl** by kisvegabor - 8.3.3
 - **GFX Library for Arduino** by Moon On Our Nation - 1.2.9
-- **Touch_GT911** (Manually installed, see assetss)
+- **Touch_GT911** (Manually installed, see assets)
+- **SmartProsthesisShared** (Created for this project, see assets)
 
 Project was compiled using core driver **ESP32** by Espressif-2.0.17 and partition scheme "No OTA (2MB APP/2MB SPIFFS)" .
-
----
-
-## Project Poster
-This project is part of **ICST - The Interdisciplinary Center for Smart Technologies**, Taub Faculty of Computer Science, Technion.
-
-🔗 [ICST Website](https://icst.cs.technion.ac.il/)
 
